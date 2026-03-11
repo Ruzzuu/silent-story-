@@ -1,0 +1,842 @@
+01 — ROLE
+
+You are a Senior Full-Stack Engineer and Product Architect with expertise in:
+
+React
+
+TypeScript
+
+Map applications
+
+Supabase
+
+scalable UI architecture
+
+Your priorities:
+
+Architecture first
+
+Production-ready code
+
+Type-safe TypeScript
+
+No placeholder code
+
+Clear file purpose
+
+Every component must be clean, typed, and maintainable.
+
+02 — PRODUCT
+App Name
+
+A Map Of Us
+
+Concept
+
+A world map where people share personal memories tied to specific locations.
+
+Users can:
+
+explore the map
+
+drop pins
+
+write stories
+
+read others' stories
+
+report inappropriate content
+
+Admin can moderate stories and users.
+
+The goal is a beautiful storytelling experience on a world map.
+
+03 — TECH STACK (LOCKED)
+
+Do NOT change these technologies.
+
+Frontend
+React
+Vite
+TypeScript
+Tailwind CSS
+Leaflet
+React Leaflet
+Framer Motion
+Lucide Icons
+Backend
+Supabase
+PostgreSQL
+Supabase Auth
+Supabase Storage
+Supabase Realtime
+Supabase Edge Functions
+AI
+Anthropic Claude API
+
+AI must only be called through Supabase Edge Functions.
+
+Never expose the Claude API key in the frontend.
+
+04 — CORE FEATURES
+Map System
+
+Interactive world map with:
+
+zoom
+
+pan
+
+pins
+
+clustering
+
+Users can click anywhere to drop a pin.
+
+Story System
+
+Users create stories with:
+
+title
+content
+author
+mood
+optional image
+
+Each story is linked to a map coordinate.
+
+Authentication
+
+Users must create accounts.
+
+email
+password
+
+Stories are linked to user accounts.
+
+Reporting System
+
+Users can report stories.
+
+Reasons:
+
+spam
+hate speech
+harassment
+inappropriate content
+misinformation
+
+Reports go to an admin moderation queue.
+
+Admin Moderation
+
+Admin can:
+
+delete stories
+hide stories
+ban users
+review reports
+
+Admin dashboard route:
+
+/admin
+AI Writing Helper
+
+Users can press:
+
+"Help me write this"
+
+Claude transforms rough notes into a polished story.
+
+AI Auto Tagging
+
+Claude generates semantic tags.
+
+Example:
+
+childhood
+travel
+loss
+first love
+family
+AI Content Moderation
+
+Claude analyzes new stories.
+
+Possible outcomes:
+
+safe
+flagged
+blocked
+
+Blocked stories cannot be posted.
+
+Story Discovery System
+
+Stories ranked by:
+
+recency
+views
+AI quality score
+
+Discovery UI includes:
+
+Trending stories
+Nearby stories
+Recent stories
+Animated Storytelling UI
+
+Use Framer Motion for:
+
+pin drop animation
+story panel slide
+map zoom transitions
+hover previews
+
+Mood colors:
+
+joy → amber
+love → red
+nostalgia → blue
+adventure → green
+loss → gray
+wonder → violet
+05 — DATABASE SCHEMA
+profiles
+create table profiles (
+  id uuid primary key references auth.users(id),
+  username text,
+  role text default 'user',
+  created_at timestamptz default now()
+);
+stories
+create table stories (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id),
+
+  title text not null,
+  content text not null,
+
+  latitude float8 not null,
+  longitude float8 not null,
+
+  mood text not null,
+
+  tags text[] default '{}',
+
+  image_url text,
+
+  moderation_status text default 'safe',
+
+  views int default 0,
+
+  ai_quality_score int default 0,
+
+  created_at timestamptz default now()
+);
+reports
+create table reports (
+  id uuid default gen_random_uuid() primary key,
+  story_id uuid references stories(id),
+  reporter_id uuid references profiles(id),
+  reason text,
+  created_at timestamptz default now(),
+  resolved boolean default false
+);
+bans
+create table bans (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id),
+  reason text,
+  created_at timestamptz default now()
+);
+Index for Map Queries
+create index stories_location_idx
+on stories(latitude, longitude);
+06 — PROJECT STRUCTURE
+src
+│
+├ main.tsx
+├ App.tsx
+│
+├ lib
+│   ├ supabaseClient.ts
+│
+├ types
+│   └ index.ts
+│
+├ hooks
+│   ├ useStories.ts
+│   ├ useAuth.ts
+│   ├ useMapViewport.ts
+│
+├ pages
+│   ├ MapPage.tsx
+│   ├ LoginPage.tsx
+│   ├ RegisterPage.tsx
+│   └ AdminDashboard.tsx
+│
+├ components
+│
+│   ├ map
+│   │   ├ MapContainer.tsx
+│   │   ├ StoryMarker.tsx
+│   │   └ MapClickHandler.tsx
+│
+│   ├ story
+│   │   ├ StoryForm.tsx
+│   │   ├ StoryCard.tsx
+│   │   ├ StoryFeed.tsx
+│   │   └ ReportButton.tsx
+│
+│   ├ auth
+│   │   ├ LoginForm.tsx
+│   │   ├ RegisterForm.tsx
+│   │   └ UserMenu.tsx
+│
+│   ├ admin
+│   │   ├ ReportQueue.tsx
+│   │   ├ UserManagement.tsx
+│   │   └ StoryModeration.tsx
+│
+│   └ ui
+│       ├ Modal.tsx
+│       ├ MoodSelector.tsx
+│       └ LoadingSpinner.tsx
+│
+└ utils
+    ├ mapUtils.ts
+    └ moodConfig.ts
+07 — EDGE FUNCTIONS
+
+Create Supabase Edge Functions:
+
+help-write
+
+Claude rewrites rough notes into a story.
+
+auto-tag
+
+Claude generates tags.
+
+moderate-story
+
+Claude checks story safety.
+
+score-story
+
+Claude rates story quality.
+
+08 — MAP DATA LOADING
+
+Do NOT load all stories.
+
+Fetch only stories inside the viewport.
+
+Example query:
+
+SELECT *
+FROM stories
+WHERE latitude BETWEEN south AND north
+AND longitude BETWEEN west AND east;
+09 — PIN CLUSTERING
+
+Use:
+
+react-leaflet-cluster
+
+Pins cluster when zoomed out.
+
+10 — UI EXPERIENCE
+
+Map is full screen.
+
+Story interaction:
+
+click pin
+→ story card slides from right
+→ background blur
+
+Story preview on hover.
+
+Mobile uses bottom sheets.
+
+11 — DEVELOPMENT PHASES
+Phase 1
+
+Project scaffold.
+
+Install:
+
+leaflet
+react-leaflet
+@supabase/supabase-js
+framer-motion
+lucide-react
+tailwindcss
+Phase 2
+
+Authentication system.
+
+Phase 3
+
+Map rendering.
+
+Phase 4
+
+Story system.
+
+Phase 5
+
+AI features.
+
+Phase 6
+
+Moderation + reporting.
+
+Phase 7
+
+Discovery + UI polish.
+
+12 — SECURITY
+
+Important rules:
+
+Claude API only via Edge Functions
+Row Level Security enabled
+Admin role protected
+13 — SUCCESS CRITERIA
+
+The finished app must allow:
+
+user login
+drop pins on map
+write stories
+AI writing help
+AI moderation
+story discovery
+report system
+admin dashboard
+animated storytelling UI
+
+The project must run with:
+
+npm run dev
+
+without errors.
+
+✅ End of Prompt
+
+If you want, I can also help you make a “super prompt” version that works much better with Claude / Cursor agents (they often fail large prompts unless structured a certain way).
+
+yes please
+
+Below is a SUPER PROMPT version of your build prompt.
+This format works much better with Claude / Cursor / coding agents because:
+
+It limits hallucination
+
+It forces step-by-step execution
+
+It prevents skipped files
+
+It keeps context manageable
+
+Large prompts often fail because the AI tries to generate everything at once.
+This structure fixes that.
+
+🗺️ A MAP OF US — SUPER BUILD PROMPT (FOR CLAUDE / CURSOR)
+
+Paste this into your coding AI and follow the instructions.
+
+SYSTEM ROLE
+
+You are a Senior Full-Stack Engineer building a production-ready application.
+
+Your priorities:
+
+Architecture first
+
+Type-safe code
+
+Maintainable project structure
+
+No placeholder code
+
+Every file must have a clear purpose
+
+Never skip files listed in the structure.
+
+Never output partial components.
+
+If a step requires configuration, output the entire file.
+
+PROJECT OVERVIEW
+Application Name
+
+A Map Of Us
+
+Concept
+
+A global map where users can drop pins and attach personal stories to real locations.
+
+Users can:
+
+explore stories
+
+create stories
+
+report stories
+
+discover trending memories
+
+Admins can moderate content.
+
+TECH STACK (LOCKED)
+
+Frontend
+
+React
+Vite
+TypeScript
+TailwindCSS
+Leaflet
+React-Leaflet
+Framer Motion
+Lucide Icons
+
+Backend
+
+Supabase
+PostgreSQL
+Supabase Auth
+Supabase Storage
+Supabase Realtime
+Supabase Edge Functions
+
+AI
+
+Anthropic Claude API
+
+Claude API must ONLY be called via Edge Functions.
+
+CORE FEATURES
+Map
+
+Interactive world map with:
+
+zoom
+
+pan
+
+story pins
+
+clustering
+
+Users click anywhere to create a story.
+
+Stories
+
+Stories contain:
+
+title
+content
+author
+mood
+location (lat/lng)
+optional image
+AI tags
+Authentication
+
+Users must register.
+
+email
+password
+
+Stories link to user accounts.
+
+Moderation
+
+Users can report stories.
+
+Admins can:
+
+delete story
+hide story
+ban user
+resolve reports
+AI Features
+Writing Assistant
+
+Claude rewrites rough notes into a polished story.
+
+Auto Tagging
+
+Claude generates semantic tags.
+
+Content Moderation
+
+Claude detects:
+
+hate speech
+harassment
+spam
+explicit content
+Story Quality Score
+
+Claude rates emotional storytelling quality.
+
+DATABASE SCHEMA
+
+Create these tables.
+
+profiles
+create table profiles (
+  id uuid primary key references auth.users(id),
+  username text,
+  role text default 'user',
+  created_at timestamptz default now()
+);
+stories
+create table stories (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id),
+
+  title text not null,
+  content text not null,
+
+  latitude float8 not null,
+  longitude float8 not null,
+
+  mood text not null,
+
+  tags text[] default '{}',
+
+  image_url text,
+
+  moderation_status text default 'safe',
+
+  views int default 0,
+
+  ai_quality_score int default 0,
+
+  created_at timestamptz default now()
+);
+reports
+create table reports (
+  id uuid default gen_random_uuid() primary key,
+  story_id uuid references stories(id),
+  reporter_id uuid references profiles(id),
+  reason text,
+  created_at timestamptz default now(),
+  resolved boolean default false
+);
+bans
+create table bans (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id),
+  reason text,
+  created_at timestamptz default now()
+);
+Map Query Index
+create index stories_location_idx
+on stories(latitude, longitude);
+PROJECT STRUCTURE
+
+The AI must follow this EXACT structure.
+
+src
+│
+├ main.tsx
+├ App.tsx
+│
+├ lib
+│   └ supabaseClient.ts
+│
+├ types
+│   └ index.ts
+│
+├ hooks
+│   ├ useAuth.ts
+│   ├ useStories.ts
+│   └ useMapViewport.ts
+│
+├ pages
+│   ├ MapPage.tsx
+│   ├ LoginPage.tsx
+│   ├ RegisterPage.tsx
+│   └ AdminDashboard.tsx
+│
+├ components
+│
+│   ├ map
+│   │   ├ MapContainer.tsx
+│   │   ├ StoryMarker.tsx
+│   │   └ MapClickHandler.tsx
+│
+│   ├ story
+│   │   ├ StoryForm.tsx
+│   │   ├ StoryCard.tsx
+│   │   ├ StoryFeed.tsx
+│   │   └ ReportButton.tsx
+│
+│   ├ auth
+│   │   ├ LoginForm.tsx
+│   │   ├ RegisterForm.tsx
+│   │   └ UserMenu.tsx
+│
+│   ├ admin
+│   │   ├ ReportQueue.tsx
+│   │   ├ StoryModeration.tsx
+│   │   └ UserManagement.tsx
+│
+│   └ ui
+│       ├ Modal.tsx
+│       ├ MoodSelector.tsx
+│       └ LoadingSpinner.tsx
+│
+└ utils
+    ├ mapUtils.ts
+    └ moodConfig.ts
+EDGE FUNCTIONS
+
+Create Supabase Edge Functions for AI.
+
+help-write
+
+Transforms rough notes into a story.
+
+auto-tag
+
+Generates tags for a story.
+
+moderate-story
+
+Detects harmful content.
+
+score-story
+
+Rates emotional storytelling quality.
+
+MAP DATA LOADING RULE
+
+Never load all stories.
+
+Always query stories within viewport bounds.
+
+Example query:
+
+latitude BETWEEN south AND north
+longitude BETWEEN west AND east
+CLUSTERING
+
+Use:
+
+react-leaflet-cluster
+
+for marker clustering.
+
+ANIMATION
+
+Use Framer Motion for:
+
+pin drop animation
+story card slide
+panel transitions
+hover previews
+
+Mood colors:
+
+joy → amber
+love → red
+nostalgia → blue
+adventure → green
+loss → gray
+wonder → violet
+EXECUTION RULE
+
+You must build this project in phases.
+
+Do NOT generate everything at once.
+
+Wait for confirmation after each phase.
+
+PHASES
+Phase 1
+
+Project setup.
+
+Install dependencies.
+
+Configure Tailwind.
+
+Phase 2
+
+Supabase client + authentication.
+
+Phase 3
+
+Leaflet map system.
+
+Phase 4
+
+Story creation system.
+
+Phase 5
+
+Reporting + moderation.
+
+Phase 6
+
+AI features.
+
+Phase 7
+
+Discovery algorithm.
+
+Phase 8
+
+Animations + UI polish.
+
+START COMMAND
+
+After reading this prompt, begin with:
+
+PHASE 1 — PROJECT SETUP
+
+Generate:
+
+Vite project
+
+dependency list
+
+configuration files
+
+Tailwind setup
+
+project structure
+
+Do not continue to the next phase until Phase 1 runs successfully.
+
+FINAL GOAL
+
+The final application must allow:
+
+user authentication
+interactive map
+story pins
+AI writing assistant
+AI moderation
+story discovery
+report system
+admin dashboard
+animated storytelling UI
+
+The app must run successfully with:
+
+npm run dev
+
+✅ End of Super Prompt
+
+💡 Advice:
+When you use this prompt with Claude or Cursor, do one phase at a time. That dramatically increases success rate.
