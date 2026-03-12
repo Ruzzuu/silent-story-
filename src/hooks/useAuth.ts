@@ -10,21 +10,49 @@ export function useAuth() {
   const [isBanned, setIsBanned] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfileAndBan = useCallback(async (userId: string) => {
+  const fetchProfileAndBan = useCallback(async (authUser: User) => {
+    const userId = authUser.id
     const [profileRes, banRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
+      supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.from('bans').select('id').eq('user_id', userId).limit(1),
     ])
-    if (profileRes.data) setProfile(profileRes.data as Profile)
+    if (profileRes.status === 401 || banRes.status === 401) {
+      await supabase.auth.signOut()
+      return
+    }
+    if (profileRes.data) {
+      setProfile(profileRes.data as Profile)
+    } else {
+      // Trigger didn't fire — create profile now using metadata
+      const username =
+        authUser.user_metadata?.username ??
+        authUser.email?.split('@')[0] ??
+        'user'
+      const { data } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, username }, { onConflict: 'id' })
+        .select()
+        .maybeSingle()
+      if (data) setProfile(data as Profile)
+    }
     if (banRes.data && banRes.data.length > 0) setIsBanned(true)
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfileAndBan(session.user.id).finally(() => setLoading(false))
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      let activeSession = session
+      if (session?.expires_at && Date.now() / 1000 > session.expires_at - 60) {
+        const { data, error } = await supabase.auth.refreshSession()
+        if (error || !data.session) {
+          setLoading(false)
+          return
+        }
+        activeSession = data.session
+      }
+      setSession(activeSession)
+      setUser(activeSession?.user ?? null)
+      if (activeSession?.user) {
+        fetchProfileAndBan(activeSession.user).finally(() => setLoading(false))
       } else {
         setLoading(false)
       }
@@ -34,7 +62,7 @@ export function useAuth() {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfileAndBan(session.user.id)
+        fetchProfileAndBan(session.user)
       } else {
         setProfile(null)
         setIsBanned(false)
@@ -45,14 +73,12 @@ export function useAuth() {
   }, [fetchProfileAndBan])
 
   const signUp = useCallback(async (email: string, password: string, username: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    })
     if (error) throw error
-    if (data.user) {
-      // Insert profile — ignore duplicate key (user may already exist)
-      await supabase
-        .from('profiles')
-        .upsert({ id: data.user.id, username }, { onConflict: 'id' })
-    }
     return data
   }, [])
 
@@ -67,5 +93,15 @@ export function useAuth() {
     if (error) throw error
   }, [])
 
-  return { user, session, profile, isBanned, loading, signUp, signIn, signOut }
+  const updateUsername = useCallback(async (username: string) => {
+    if (!user) throw new Error('Not signed in')
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username })
+      .eq('id', user.id)
+    if (error) throw error
+    setProfile((prev) => prev ? { ...prev, username } : prev)
+  }, [user])
+
+  return { user, session, profile, isBanned, loading, signUp, signIn, signOut, updateUsername }
 }

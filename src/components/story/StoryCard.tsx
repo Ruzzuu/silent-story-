@@ -15,7 +15,7 @@ interface StoryCardProps {
 
 export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
   const config = moodConfig[story.mood]
-  const { counts: reactionCounts, userReaction, react } = useReactions(story.id, userId)
+  const { userReaction, react } = useReactions(story.id, userId)
   const [saved, setSaved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showReport, setShowReport] = useState(false)
@@ -62,28 +62,28 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
 
   return (
     <motion.div
-      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-30 overflow-y-auto"
+      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-amber-50 shadow-2xl z-30 overflow-y-auto"
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 250 }}
     >
-      <div className="sticky top-0 bg-white/90 backdrop-blur-sm border-b z-10">
+      <div className="sticky top-0 bg-amber-50/90 backdrop-blur-sm border-b border-amber-200 z-10">
         <div className="flex items-center justify-between px-6 py-4">
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
             {config.emoji} {config.label}
           </span>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 transition">
-            <X size={20} className="text-gray-500" />
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-amber-100 transition">
+            <X size={20} className="text-stone-500" />
           </button>
         </div>
         <div className={`h-1 w-full bg-gradient-to-r ${config.gradient}`} />
       </div>
 
       <div className="px-6 py-6 space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">{story.title}</h1>
+        <h1 className="text-2xl font-bold text-stone-900">{story.title}</h1>
 
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center gap-4 text-sm text-stone-500">
           <span className="flex items-center gap-1">
             <MapPin size={14} />
             {story.latitude.toFixed(2)}, {story.longitude.toFixed(2)}
@@ -94,7 +94,7 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
           </span>
         </div>
 
-        <p className="text-sm text-gray-400 italic">
+        <p className="text-sm text-stone-400 italic">
           {story.is_anonymous
             ? '— a wanderer'
             : story.profiles?.username
@@ -102,12 +102,12 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
             : null}
         </p>
 
-        <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.content}</div>
+        <div className="text-stone-700 leading-relaxed whitespace-pre-wrap">{story.content}</div>
 
         {story.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {story.tags.map((tag) => (
-              <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-600">
+              <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-amber-100 rounded-full text-xs text-amber-800">
                 <Tag size={12} />
                 {tag}
               </span>
@@ -123,19 +123,18 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
           />
         )}
 
-        <div className="border-t pt-4">
+        <div className="border-t border-amber-200 pt-4">
           <div className="flex items-center justify-around">
             <button
               type="button"
               onClick={() => setSaved((current) => !current)}
-              className="flex flex-col items-center gap-1 transition"
+              className="flex items-center transition"
               aria-label={saved ? 'Remove bookmark' : 'Bookmark story'}
             >
               <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition
-                ${saved ? 'border-gray-700 bg-gray-100 text-gray-800' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-400 hover:bg-gray-100'}`}>
+                ${saved ? 'border-amber-600 bg-amber-100 text-amber-700' : 'border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-400 hover:bg-stone-100'}`}>
                 <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />
               </div>
-              <span className={`text-xs font-semibold leading-none ${saved ? 'text-gray-800' : 'text-gray-500'}`}>{saved ? 1 : 0}</span>
             </button>
 
             <ReactionBar storyId={story.id} userId={userId} />
@@ -145,35 +144,31 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
               onClick={() => react('love')}
               disabled={!userId}
               title={userId ? 'Love' : 'Login to react'}
-              className={`flex flex-col items-center gap-1 transition ${userId ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+              className={`flex items-center transition ${userId ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
               aria-label="Love"
             >
               <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition
-                ${userReaction === 'love' ? 'border-rose-400 bg-rose-50 text-rose-500' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-400 hover:bg-gray-100'}`}>
+                ${userReaction === 'love' ? 'border-rose-400 bg-rose-50 text-rose-500' : 'border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-400 hover:bg-stone-100'}`}>
                 <Heart size={18} fill={userReaction === 'love' ? 'currentColor' : 'none'} />
               </div>
-              <span className={`text-xs font-semibold leading-none ${userReaction === 'love' ? 'text-rose-500' : 'text-gray-500'}`}>
-                {reactionCounts.love}
-              </span>
             </button>
 
-            <div ref={menuRef} className="relative flex flex-col items-center gap-1">
+            <div ref={menuRef} className="relative flex items-center">
               <button
                 type="button"
                 onClick={() => setMenuOpen((current) => !current)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-gray-50 text-gray-500 transition hover:border-gray-400 hover:bg-gray-100"
+                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-200 bg-stone-50 text-stone-400 transition hover:border-stone-400 hover:bg-stone-100"
                 aria-label="More actions"
               >
                 <MoreHorizontal size={18} />
               </button>
-              <span className="text-xs leading-none">&nbsp;</span>
 
               {menuOpen && (
-                <div className="absolute bottom-8 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-gray-300 bg-white shadow-lg">
+                <div className="absolute bottom-8 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-amber-200 bg-amber-50 shadow-lg">
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+                    className="block w-full px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-amber-100"
                   >
                     Share
                   </button>
@@ -184,7 +179,7 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
                         setShowReport((current) => !current)
                         setMenuOpen(false)
                       }}
-                      className="block w-full border-t border-gray-200 px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-100"
+                      className="block w-full border-t border-amber-200 px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-amber-100"
                     >
                       Report
                     </button>
@@ -195,7 +190,7 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
           </div>
 
           {!userId && (
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-stone-400 italic">
               <Lock size={11} />
               Sign in to react to this memory
             </p>

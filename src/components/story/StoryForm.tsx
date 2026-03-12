@@ -79,7 +79,7 @@ export default function StoryForm({ latitude, longitude, onSubmit, onCancel }: S
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="p-3 text-sm text-red-700 bg-red-50 rounded-lg">{error}</div>
       )}
@@ -132,7 +132,7 @@ export default function StoryForm({ latitude, longitude, onSubmit, onCancel }: S
           value={content}
           onChange={(e) => setContent(e.target.value)}
           required
-          rows={5}
+          rows={3}
           maxLength={5000}
           className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-violet-400 focus:border-violet-400 outline-none resize-none"
           placeholder="Write freely. No one has to know it's you…"

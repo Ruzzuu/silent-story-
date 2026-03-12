@@ -21,15 +21,15 @@ export default function StoryFeed({ stories, mapCenter, onStoryClick, onClose }:
 
   return (
     <motion.div
-      className="fixed left-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-30 overflow-y-auto"
+      className="fixed left-0 top-0 bottom-0 w-full max-w-sm bg-amber-50 shadow-2xl z-30 overflow-y-auto"
       initial={{ x: '-100%' }}
       animate={{ x: 0 }}
       exit={{ x: '-100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 250 }}
     >
-      <div className="sticky top-0 bg-white/80 backdrop-blur-sm border-b z-10 px-6 py-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Discover Stories</h2>
-        <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600">Close</button>
+      <div className="sticky top-0 bg-amber-50/90 backdrop-blur-sm border-b border-amber-200 z-10 px-6 py-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-stone-800">Discover Stories</h2>
+        <button onClick={onClose} className="text-sm text-stone-400 hover:text-stone-600">Close</button>
       </div>
 
       <div className="p-6 space-y-6">
@@ -78,7 +78,7 @@ function StoryFeedItem({ story, onClick, distance }: { story: Story; onClick: ()
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-3 rounded-xl hover:bg-gray-50 transition flex items-start gap-3"
+      className="w-full text-left p-3 rounded-xl hover:bg-amber-100 transition flex items-start gap-3"
     >
       <div
         className="w-3 h-3 rounded-full mt-1.5 shrink-0"
