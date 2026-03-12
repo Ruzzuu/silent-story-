@@ -56,7 +56,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, contextHint, sto
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-5 pb-4">
                   <div>
-                    <h2 className="text-lg font-bold text-white">A Map Of Us</h2>
+                    <h2 className="text-lg font-bold text-white">Stories Between Us</h2>
                     {storyCount !== undefined && storyCount > 0 && (
                       <p className="text-xs text-gray-400 mt-0.5">
                         Join {storyCount.toLocaleString()} {storyCount === 1 ? 'memory' : 'memories'} already on the map

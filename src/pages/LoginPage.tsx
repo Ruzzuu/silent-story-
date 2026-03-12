@@ -29,7 +29,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-amber-100 tracking-widest uppercase">
-            A Map Of Us
+            Stories Between Us
           </h1>
           <p className="text-sm text-amber-200/80 max-w-xs mx-auto leading-relaxed italic">
             The world remembers everything.<br />Now it can remember you.
