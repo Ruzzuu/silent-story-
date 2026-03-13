@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import MapContainerComponent from '../components/map/MapContainer'
+import PlaceSearch from '../components/map/PlaceSearch'
 import StoryForm from '../components/story/StoryForm'
 import StoryCard from '../components/story/StoryCard'
 import StoryFeed from '../components/story/StoryFeed'
@@ -65,7 +66,7 @@ export default function MapPage() {
   useEffect(() => {
     if (!pendingWelcome || !user) return
     setPendingWelcome(false)
-    setWelcomeName(profile?.username ?? user.email?.split('@')[0] ?? '')
+    setWelcomeName(profile?.username ?? '')
     setShowWelcomeBanner(true)
     const t = setTimeout(() => setShowWelcomeBanner(false), 4000)
     return () => clearTimeout(t)
@@ -112,6 +113,11 @@ export default function MapPage() {
     )
   }
 
+  const handlePlaceSelect = useCallback((lat: number, lng: number) => {
+    setFlyToCoords([lat, lng])
+    setMapCenter({ lat, lng })
+  }, [])
+
   return (
     <div className="h-screen w-screen relative overflow-hidden">
       <MapContainerComponent
@@ -123,7 +129,7 @@ export default function MapPage() {
       />
 
       {/* Top bar */}
-      <div className="absolute top-4 left-4 z-20 pointer-events-auto">
+      <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2">
         {!showToolbar ? (
           <button
             onClick={() => setShowToolbar(true)}
@@ -182,6 +188,8 @@ export default function MapPage() {
             </button>
           </div>
         )}
+
+        <PlaceSearch onSelect={handlePlaceSelect} />
       </div>
 
       {/* User menu */}
@@ -222,20 +230,6 @@ export default function MapPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Floating Surprise me button — visible to everyone, no login required */}
-      <div className="absolute bottom-28 right-4 z-20 pointer-events-auto">
-        <motion.button
-          onClick={handleShuffle}
-          disabled={shuffling}
-          whileTap={{ scale: 0.93 }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900/90 text-white text-sm font-medium rounded-full shadow-xl backdrop-blur-sm border border-white/10 hover:bg-gray-800 transition disabled:opacity-60"
-          title="Show a random memory"
-        >
-          <Shuffle size={15} className={shuffling ? 'animate-spin' : ''} />
-          {shuffling ? 'Finding…' : 'Surprise me'}
-        </motion.button>
-      </div>
 
       {/* Story Card Panel */}
       <AnimatePresence>
@@ -284,10 +278,10 @@ export default function MapPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ type: 'spring', damping: 20, stiffness: 260 }}
-            className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            className=""
           >
             <div className="flex items-center gap-2 px-5 py-3 bg-violet-600 text-white text-sm rounded-full shadow-xl">
-              ✨ Welcome{welcomeName ? `, ${welcomeName}` : ''}! Tap anywhere on the map to leave your memory.
+              Welcome{welcomeName ? `, ${welcomeName}` : ''}! Tap anywhere on the map to leave your memory.
             </div>
           </motion.div>
         )}

@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, MapPin, Calendar, Tag, Bookmark, Heart, MoreHorizontal, Lock } from 'lucide-react'
+import { Sun, Waves, Compass, CloudRain, Sparkles } from 'lucide-react'
 import { moodConfig } from '../../utils/moodConfig'
 import ReportButton from './ReportButton'
 import ReactionBar from './ReactionBar'
 import { useReactions } from '../../hooks/useReactions'
-import type { Story } from '../../types'
+import type { Mood, Story } from '../../types'
 
 interface StoryCardProps {
   story: Story
   onClose: () => void
   userId?: string
+}
+
+const moodIcons: Record<Mood, React.ReactNode> = {
+  joy: <Sun size={14} />,
+  love: <Heart size={14} />,
+  nostalgia: <Waves size={14} />,
+  adventure: <Compass size={14} />,
+  loss: <CloudRain size={14} />,
+  wonder: <Sparkles size={14} />,
 }
 
 export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
@@ -70,8 +80,9 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
     >
       <div className="sticky top-0 bg-amber-50/90 backdrop-blur-sm border-b border-amber-200 z-10">
         <div className="flex items-center justify-between px-6 py-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
-            {config.emoji} {config.label}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
+            {moodIcons[story.mood]}
+            {config.label}
           </span>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-amber-100 transition">
             <X size={20} className="text-stone-500" />

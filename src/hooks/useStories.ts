@@ -3,11 +3,63 @@ import { supabase } from '../lib/supabaseClient'
 import type { Story, MapBounds } from '../types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
+const RANDOM_SEEN_STORAGE_KEY = 'random_seen_story_ids'
+const RANDOM_POOL_SIZE = 300
+const SEEN_STORY_WEIGHT = 0.15
+
+function readSeenStoryIds(): Set<string> {
+  try {
+    const raw = window.sessionStorage.getItem(RANDOM_SEEN_STORAGE_KEY)
+    if (!raw) return new Set<string>()
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set<string>()
+    return new Set(parsed.filter((id): id is string => typeof id === 'string'))
+  } catch {
+    return new Set<string>()
+  }
+}
+
+function writeSeenStoryIds(ids: Set<string>) {
+  try {
+    window.sessionStorage.setItem(RANDOM_SEEN_STORAGE_KEY, JSON.stringify(Array.from(ids)))
+  } catch {
+    // Ignore storage errors; random feature should continue working.
+  }
+}
+
+function pickWeightedStory(storyPool: Story[], seenStoryIds: Set<string>): Story | null {
+  if (storyPool.length === 0) return null
+
+  const weightedPool = storyPool.map((story) => {
+    const isSeen = seenStoryIds.has(story.id)
+    return {
+      story,
+      weight: isSeen ? SEEN_STORY_WEIGHT : 1,
+    }
+  })
+
+  const totalWeight = weightedPool.reduce((sum, item) => sum + item.weight, 0)
+  if (totalWeight <= 0) return storyPool[Math.floor(Math.random() * storyPool.length)]
+
+  let threshold = Math.random() * totalWeight
+  for (const item of weightedPool) {
+    threshold -= item.weight
+    if (threshold <= 0) return item.story
+  }
+
+  return weightedPool[weightedPool.length - 1].story
+}
+
 export function useStories() {
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(false)
   const boundsRef = useRef<MapBounds | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const seenRandomStoryIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    seenRandomStoryIdsRef.current = readSeenStoryIds()
+  }, [])
 
   // Set up realtime subscription once
   useEffect(() => {
@@ -82,15 +134,33 @@ export function useStories() {
   }, [])
 
   const fetchRandomStory = useCallback(async (): Promise<Story | null> => {
+    const { count: totalStories, error: countError } = await supabase
+      .from('stories')
+      .select('*', { count: 'exact', head: true })
+      .eq('moderation_status', 'safe')
+
+    if (countError || !totalStories || totalStories <= 0) return null
+
+    const maxStart = Math.max(0, totalStories - RANDOM_POOL_SIZE)
+    const start = maxStart > 0 ? Math.floor(Math.random() * (maxStart + 1)) : 0
+    const end = start + RANDOM_POOL_SIZE - 1
+
     const { data, error } = await supabase
       .from('stories')
       .select('*, profiles(username)')
       .eq('moderation_status', 'safe')
-      .limit(1)
-      .order('created_at', { ascending: Math.random() > 0.5 })
-      .range(0, 0)
+      .order('created_at', { ascending: false })
+      .range(start, end)
+
     if (error || !data || data.length === 0) return null
-    return data[0] as Story
+
+    const selectedStory = pickWeightedStory(data as Story[], seenRandomStoryIdsRef.current)
+    if (!selectedStory) return null
+
+    seenRandomStoryIdsRef.current.add(selectedStory.id)
+    writeSeenStoryIds(seenRandomStoryIdsRef.current)
+
+    return selectedStory
   }, [])
 
   return { stories, loading, fetchStoriesInBounds, createStory, incrementViews, fetchRandomStory }

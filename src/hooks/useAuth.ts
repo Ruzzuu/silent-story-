@@ -3,6 +3,10 @@ import { supabase } from '../lib/supabaseClient'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '../types'
 
+function looksLikeEmail(value: string): boolean {
+  return value.includes('@')
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -82,7 +86,22 @@ export function useAuth() {
     return data
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (identifier: string, password: string) => {
+    const normalizedIdentifier = identifier.trim()
+    let email = normalizedIdentifier
+
+    if (!looksLikeEmail(normalizedIdentifier)) {
+      const { data: resolvedEmail, error: resolveError } = await supabase.rpc('resolve_login_email', {
+        p_username: normalizedIdentifier,
+      })
+
+      if (resolveError || !resolvedEmail || typeof resolvedEmail !== 'string') {
+        throw new Error('Invalid login credentials')
+      }
+
+      email = resolvedEmail
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     return data

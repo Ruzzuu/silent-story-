@@ -9,7 +9,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
   const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,14 +19,14 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
     setError('')
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(identifier, password)
       onSuccess()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed'
       if (msg.toLowerCase().includes('email not confirmed')) {
         setError('Email not confirmed. Please register a new account or confirm your email in the Supabase dashboard.')
       } else if (msg.toLowerCase().includes('invalid login credentials')) {
-        setError('Invalid email or password. Please check your credentials or register a new account.')
+        setError('Invalid email/username or password. Please check your credentials or register a new account.')
       } else {
         setError(msg)
       }
@@ -41,14 +41,14 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
         <div className="p-3 text-sm text-red-300 bg-red-950/60 border border-red-800/50 rounded-lg">{error}</div>
       )}
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-1">Email</label>
+        <label className="block text-sm font-medium text-stone-300 mb-1">Email or Username</label>
         <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="text"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
           required
           className="w-full px-3 py-2 bg-stone-800/60 border border-amber-700/40 text-amber-50 placeholder-stone-500 rounded-lg focus:ring-2 focus:ring-amber-600 focus:border-amber-600 outline-none"
-          placeholder="you@example.com"
+          placeholder="you@example.com or yourusername"
         />
       </div>
       <div>

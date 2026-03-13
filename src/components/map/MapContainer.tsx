@@ -14,9 +14,17 @@ function formatCount(n: number): string {
   return String(n)
 }
 
+function getClusterTierClass(count: number): string {
+  if (count >= 1000) return 'cluster-tier-red'
+  if (count >= 101) return 'cluster-tier-orange'
+  if (count >= 11) return 'cluster-tier-yellow'
+  return 'cluster-tier-green'
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createClusterIcon(cluster: any): L.DivIcon {
   const count = cluster.getChildCount()
+  const tierClass = getClusterTierClass(count)
   let size = 34
   let sizeClass = 'cluster-sm'
   if (count >= 1000) { size = 64; sizeClass = 'cluster-xl' }
@@ -24,7 +32,7 @@ function createClusterIcon(cluster: any): L.DivIcon {
   else if (count >= 10) { size = 44; sizeClass = 'cluster-md' }
 
   return L.divIcon({
-    html: `<div class="custom-cluster ${sizeClass}"><span>${formatCount(count)}</span></div>`,
+    html: `<div class="custom-cluster ${sizeClass} ${tierClass}"><span>${formatCount(count)}</span></div>`,
     className: 'custom-cluster-wrapper',
     iconSize: L.point(size, size),
   })
