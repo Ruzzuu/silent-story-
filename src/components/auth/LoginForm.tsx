@@ -38,27 +38,27 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 text-sm text-red-300 bg-red-950/60 border border-red-800/50 rounded-lg">{error}</div>
+        <div className="p-3 text-sm text-red-700 bg-red-100/90 border border-red-300 rounded-lg">{error}</div>
       )}
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-1">Email or Username</label>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Email or Username</label>
         <input
           type="text"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-stone-800/60 border border-amber-700/40 text-amber-50 placeholder-stone-500 rounded-lg focus:ring-2 focus:ring-amber-600 focus:border-amber-600 outline-none"
+          className="w-full px-3 py-2 bg-white/75 border border-gray-300 text-gray-900 placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
           placeholder="you@example.com or yourusername"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-1">Password</label>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-stone-800/60 border border-amber-700/40 text-amber-50 placeholder-stone-500 rounded-lg focus:ring-2 focus:ring-amber-600 focus:border-amber-600 outline-none"
+          className="w-full px-3 py-2 bg-white/75 border border-gray-300 text-gray-900 placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
           placeholder="••••••••"
         />
       </div>
@@ -70,7 +70,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
         <LogIn size={18} />
         {loading ? 'Signing in...' : 'Sign In'}
       </button>
-      <p className="text-sm text-center text-stone-500">
+      <p className="text-sm text-center text-gray-700">
         Don't have an account?{' '}
         <button type="button" onClick={onSwitchToRegister} className="text-amber-500 hover:text-amber-400 hover:underline">
           Register

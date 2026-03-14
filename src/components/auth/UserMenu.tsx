@@ -24,9 +24,24 @@ function Avatar({ seed, size = 'sm' }: { seed: string; size?: 'sm' | 'lg' }) {
   )
 }
 
+function formatMenuUsername(raw: string) {
+  const normalized = raw.trim().replace(/\s+/g, ' ')
+  if (!normalized) return ''
+
+  const words = normalized.split(' ')
+  let compact = words[0] ?? ''
+
+  if (words.length > 1 && words[1]) {
+    compact = `${words[0]} ${words[1][0]}.`
+  }
+
+  return compact.length > 10 ? `${compact.slice(0, 10)}..` : compact
+}
+
 export default function UserMenu({ onRequestAuth }: { onRequestAuth?: () => void }) {
   const { user, profile, signOut, updateUsername } = useAuth()
   const [open, setOpen] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -66,7 +81,10 @@ export default function UserMenu({ onRequestAuth }: { onRequestAuth?: () => void
   }
 
   const username = profile?.username ?? user.email?.split('@')[0] ?? ''
+  const menuUsername = formatMenuUsername(username)
   const email = user.email ?? ''
+  const isExpanded = isHovered || open
+  const expandedWidth = `${Math.max(128, 72 + menuUsername.length * 9)}px`
 
   const handleSaveName = async () => {
     const trimmed = draftName.trim()
@@ -84,18 +102,31 @@ export default function UserMenu({ onRequestAuth }: { onRequestAuth?: () => void
   }
 
   return (
-    <div ref={menuRef} className="relative">
+    <div
+      ref={menuRef}
+      className="relative h-10 w-44"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full bg-white/90 py-1.5 pl-1.5 pr-3 shadow-md backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+        className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-full bg-white/90 py-1.5 pl-1.5 pr-2.5 shadow-md backdrop-blur transition-all duration-300 ease-out hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+        style={{ width: isExpanded ? expandedWidth : '40px' }}
+        aria-label={isExpanded ? `Open user menu for ${menuUsername}` : 'Open user menu'}
       >
         <Avatar seed={username || email} />
-        <span className="max-w-[7rem] truncate text-sm font-medium text-gray-700">
-          {username}
+        <span
+          className={`min-w-0 whitespace-nowrap text-left text-sm font-medium text-gray-700 transition-all duration-200 ${
+            isExpanded ? 'max-w-28 opacity-100' : 'max-w-0 opacity-0'
+          }`}
+        >
+          {menuUsername}
         </span>
         <ChevronDown
           size={14}
-          className={`shrink-0 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-gray-400 transition-all duration-200 ${
+            open ? 'rotate-180' : ''
+          } ${isExpanded ? 'opacity-100' : 'w-0 opacity-0'}`}
         />
       </button>
 

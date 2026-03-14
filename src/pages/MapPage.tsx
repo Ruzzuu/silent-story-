@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import type L from 'leaflet'
 import MapContainerComponent from '../components/map/MapContainer'
 import PlaceSearch from '../components/map/PlaceSearch'
 import StoryForm from '../components/story/StoryForm'
@@ -10,8 +11,10 @@ import AuthModal from '../components/auth/AuthModal'
 import Modal from '../components/ui/Modal'
 import { useStories } from '../hooks/useStories'
 import { useAuth } from '../hooks/useAuth'
-import { BookOpen, Plus, Locate, Menu, X, MousePointerClick, Shuffle } from 'lucide-react'
+import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle, Hand } from 'lucide-react'
 import type { Story, MapBounds, Mood } from '../types'
+
+const PENDING_VERIFICATION_KEY = 'pending_email_verification_v1'
 
 export default function MapPage() {
   const { user, profile } = useAuth()
@@ -22,6 +25,7 @@ export default function MapPage() {
   const [showFeed, setShowFeed] = useState(false)
   const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null)
   const [flyToCoords, setFlyToCoords] = useState<[number, number] | null>(null)
+  const [currentUserLocation, setCurrentUserLocation] = useState<[number, number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 20, lng: 0 })
   const [showToolbar, setShowToolbar] = useState(false)
   const [hasClickedMap, setHasClickedMap] = useState(false)
@@ -31,6 +35,8 @@ export default function MapPage() {
   const [welcomeName, setWelcomeName] = useState('')
   const [pendingWelcome, setPendingWelcome] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
+  const [mapInteractionMode, setMapInteractionMode] = useState<'pan' | 'select'>('pan')
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     setCurrentBounds(bounds)
@@ -45,6 +51,15 @@ export default function MapPage() {
       fetchStoriesInBounds(currentBounds)
     }
   }, [currentBounds, fetchStoriesInBounds])
+
+  useEffect(() => {
+    if (user || typeof window === 'undefined') return
+    const hasPendingVerification = window.sessionStorage.getItem(PENDING_VERIFICATION_KEY) !== null
+    if (hasPendingVerification) {
+      setAuthModalHint('Complete your email verification to continue')
+      setShowAuthModal(true)
+    }
+  }, [user])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     if (!user) {
@@ -108,7 +123,11 @@ export default function MapPage() {
   const handleFindMe = () => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setFlyToCoords([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        setFlyToCoords(coords)
+        setCurrentUserLocation(coords)
+      },
       () => alert('Could not get your location'),
     )
   }
@@ -126,7 +145,50 @@ export default function MapPage() {
         onStoryClick={handleStoryClick}
         onBoundsChange={handleBoundsChange}
         flyToCoords={flyToCoords}
+        currentUserLocation={currentUserLocation}
+        interactionMode={mapInteractionMode}
+        onMapReady={setMapInstance}
       />
+
+      {/* Custom map controls */}
+      <div className="story-map-controls">
+        <button
+          type="button"
+          onClick={() => setMapInteractionMode((mode) => mode === 'pan' ? 'select' : 'pan')}
+          className="story-control-btn"
+          title="Pan mode aktif. Klik untuk pindah ke select mode."
+          aria-label="Switch to coordinate select mode"
+        >
+          {mapInteractionMode === 'pan' ? <MousePointerClick size={19} className="mx-auto" /> : <Hand size={20} className="mx-auto" />}
+        </button>
+        <button
+          type="button"
+          onClick={handleFindMe}
+          className="story-control-btn"
+          title="Find my location"
+          aria-label="Find my location"
+        >
+          <Locate size={20} className="mx-auto" />
+        </button>
+        <button
+          type="button"
+          onClick={() => mapInstance?.zoomIn()}
+          className="story-control-btn story-control-btn-zoom"
+          title="Zoom in"
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => mapInstance?.zoomOut()}
+          className="story-control-btn story-control-btn-zoom"
+          title="Zoom out"
+          aria-label="Zoom out"
+        >
+          -
+        </button>
+      </div>
 
       {/* Top bar */}
       <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2">
@@ -170,21 +232,16 @@ export default function MapPage() {
               <Locate size={18} />
             </button>
             <button
+              type="button"
               onClick={() => {
-                if (!user) {
-                  setAuthModalHint('Sign in to share a memory 📍')
-                  setShowAuthModal(true)
-                  setShowToolbar(false)
-                } else {
-                  setClickedLocation(mapCenter)
-                  setShowForm(true)
-                  setShowToolbar(false)
-                }
+                setMapInteractionMode((mode) => mode === 'pan' ? 'select' : 'pan')
+                setShowToolbar(false)
               }}
-              className="p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
-              title="New story"
+              className="story-control-btn"
+              title="Pan mode aktif. Klik untuk pindah ke select mode."
+              aria-label="Switch to coordinate select mode"
             >
-              <Plus size={18} />
+              {mapInteractionMode === 'pan' ? <MousePointerClick size={19} className="mx-auto" /> : <Hand size={20} className="mx-auto" />}
             </button>
           </div>
         )}

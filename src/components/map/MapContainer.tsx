@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import L from 'leaflet'
-import { MapContainer as LeafletMap, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, MapContainer as LeafletMap, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import MapClickHandler from './MapClickHandler'
 import StoryMarker from './StoryMarker'
@@ -44,6 +44,19 @@ interface MapContainerProps {
   onStoryClick: (story: Story) => void
   onBoundsChange: (bounds: MapBounds) => void
   flyToCoords?: [number, number] | null
+  currentUserLocation?: [number, number] | null
+  interactionMode: 'pan' | 'select'
+  onMapReady?: (map: L.Map) => void
+}
+
+function MapInstanceBridge({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap()
+
+  useEffect(() => {
+    onReady(map)
+  }, [map, onReady])
+
+  return null
 }
 
 function BoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: MapBounds) => void }) {
@@ -91,12 +104,62 @@ function FlyToHandler({ coords }: { coords: [number, number] | null }) {
   return null
 }
 
+function InteractionModeHandler({ mode }: { mode: 'pan' | 'select' }) {
+  const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+    container.classList.toggle('map-pan-mode', mode === 'pan')
+    container.classList.toggle('map-select-mode', mode === 'select')
+
+    if (mode === 'select') {
+      map.dragging.disable()
+    } else {
+      map.dragging.enable()
+    }
+
+    return () => {
+      container.classList.remove('map-pan-mode', 'map-select-mode')
+      map.dragging.enable()
+    }
+  }, [map, mode])
+
+  return null
+}
+
+function MapClickSplashHandler({ mode }: { mode: 'pan' | 'select' }) {
+  const map = useMapEvents({
+    click(e) {
+      if (mode !== 'select') return
+
+      const splash = L.marker(e.latlng, {
+        interactive: false,
+        icon: L.divIcon({
+          className: 'map-click-splash-wrapper',
+          html: '<span class="map-click-splash"></span>',
+          iconSize: [46, 46],
+          iconAnchor: [23, 23],
+        }),
+      }).addTo(map)
+
+      window.setTimeout(() => {
+        splash.remove()
+      }, 520)
+    },
+  })
+
+  return null
+}
+
 export default function MapContainerComponent({
   stories,
   onMapClick,
   onStoryClick,
   onBoundsChange,
   flyToCoords,
+  currentUserLocation,
+  interactionMode,
+  onMapReady,
 }: MapContainerProps) {
   const handleBoundsChange = useCallback(
     (bounds: MapBounds) => onBoundsChange(bounds),
@@ -115,14 +178,28 @@ export default function MapContainerComponent({
       maxBounds={[[-75, -Infinity], [85, Infinity]]}
       maxBoundsViscosity={1.0}
     >
-      <ZoomControl position="bottomright" />
+      {onMapReady ? <MapInstanceBridge onReady={onMapReady} /> : null}
       <TileLayer
         attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
-      <MapClickHandler onClick={onMapClick} />
+      <MapClickHandler onClick={onMapClick} enabled={interactionMode === 'select'} />
+      <MapClickSplashHandler mode={interactionMode} />
+      <InteractionModeHandler mode={interactionMode} />
       <BoundsTracker onBoundsChange={handleBoundsChange} />
       <FlyToHandler coords={flyToCoords ?? null} />
+      {currentUserLocation ? (
+        <CircleMarker
+          center={currentUserLocation}
+          radius={8}
+          pathOptions={{
+            color: '#ffffff',
+            weight: 3,
+            fillColor: '#2563eb',
+            fillOpacity: 1,
+          }}
+        />
+      ) : null}
       <MarkerClusterGroup
         chunkedLoading
         iconCreateFunction={createClusterIcon}

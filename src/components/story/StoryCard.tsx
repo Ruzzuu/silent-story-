@@ -4,7 +4,6 @@ import { X, MapPin, Calendar, Tag, Bookmark, Heart, MoreHorizontal, Lock } from 
 import { Sun, Waves, Compass, CloudRain, Sparkles } from 'lucide-react'
 import { moodConfig } from '../../utils/moodConfig'
 import ReportButton from './ReportButton'
-import ReactionBar from './ReactionBar'
 import { useReactions } from '../../hooks/useReactions'
 import type { Mood, Story } from '../../types'
 
@@ -25,7 +24,8 @@ const moodIcons: Record<Mood, React.ReactNode> = {
 
 export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
   const config = moodConfig[story.mood]
-  const { userReaction, react } = useReactions(story.id, userId)
+  const { counts, userReaction, react } = useReactions(story.id, userId)
+  const visibleTags = story.tags.filter((tag) => !tag.startsWith('trail:'))
   const [saved, setSaved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showReport, setShowReport] = useState(false)
@@ -72,27 +72,26 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
 
   return (
     <motion.div
-      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-amber-50 shadow-2xl z-30 overflow-y-auto"
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
+      className="fixed left-1/2 top-1/2 z-30 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[82vh] overflow-hidden rounded-2xl border border-stone-500 bg-stone-100 shadow-2xl"
+      initial={{ opacity: 0, y: 16, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 16, scale: 0.96 }}
       transition={{ type: 'spring', damping: 25, stiffness: 250 }}
     >
-      <div className="sticky top-0 bg-amber-50/90 backdrop-blur-sm border-b border-amber-200 z-10">
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
+      <div className="sticky top-0 z-10 border-b border-stone-300 bg-stone-100/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-5 py-3">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${config.bgColor} ${config.textColor}`}>
             {moodIcons[story.mood]}
             {config.label}
           </span>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-amber-100 transition">
+          <button onClick={onClose} className="rounded-full p-2 transition hover:bg-stone-200">
             <X size={20} className="text-stone-500" />
           </button>
         </div>
-        <div className={`h-1 w-full bg-gradient-to-r ${config.gradient}`} />
       </div>
 
-      <div className="px-6 py-6 space-y-4">
-        <h1 className="text-2xl font-bold text-stone-900">{story.title}</h1>
+      <div className="max-h-[calc(82vh-72px)] overflow-y-auto px-5 py-5 space-y-4">
+        <h1 className="text-2xl font-semibold text-stone-800">{story.title}</h1>
 
         <div className="flex items-center gap-4 text-sm text-stone-500">
           <span className="flex items-center gap-1">
@@ -115,9 +114,9 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
 
         <div className="text-stone-700 leading-relaxed whitespace-pre-wrap">{story.content}</div>
 
-        {story.tags.length > 0 && (
+        {visibleTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {story.tags.map((tag) => (
+            {visibleTags.map((tag) => (
               <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-amber-100 rounded-full text-xs text-amber-800">
                 <Tag size={12} />
                 {tag}
@@ -134,52 +133,74 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
           />
         )}
 
-        <div className="border-t border-amber-200 pt-4">
-          <div className="flex items-center justify-around">
-            <button
-              type="button"
-              onClick={() => setSaved((current) => !current)}
-              className="flex items-center transition"
-              aria-label={saved ? 'Remove bookmark' : 'Bookmark story'}
-            >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition
-                ${saved ? 'border-amber-600 bg-amber-100 text-amber-700' : 'border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-400 hover:bg-stone-100'}`}>
-                <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />
-              </div>
-            </button>
+        <div className="border-t border-stone-300 pt-4">
+          <div className="flex items-end justify-between px-1">
+            <div className="flex min-w-13 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setSaved((current) => !current)}
+                className="text-stone-700 transition hover:text-stone-900"
+                aria-label={saved ? 'Remove bookmark' : 'Bookmark story'}
+              >
+                <Bookmark size={27} fill={saved ? 'currentColor' : 'none'} />
+              </button>
+              <span className="mt-1 text-sm text-stone-700">{story.views}</span>
+            </div>
 
-            <ReactionBar storyId={story.id} userId={userId} />
+            <div className="flex min-w-13 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => react('like')}
+                disabled={!userId}
+                title={userId ? 'React' : 'Login to react'}
+                className={`transition ${userId ? 'cursor-pointer text-stone-700 hover:text-stone-900' : 'cursor-not-allowed text-stone-400 opacity-50'}`}
+                aria-label="React"
+              >
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all
+                    ${userReaction === 'like' ? 'bg-[radial-gradient(circle_at_center,_#b45309_15%,_#0369a1_90%)] shadow-sm' : ''}
+                  `}
+                >
+                  <img
+                    src="/emote.webp"
+                    alt="React"
+                    className={`h-7 w-7 object-contain transition-transform ${userReaction === 'like' ? 'scale-105' : ''}`}
+                  />
+                </span>
+              </button>
+              <span className="mt-1 text-sm text-stone-700">{counts.like}</span>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => react('love')}
-              disabled={!userId}
-              title={userId ? 'Love' : 'Login to react'}
-              className={`flex items-center transition ${userId ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
-              aria-label="Love"
-            >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition
-                ${userReaction === 'love' ? 'border-rose-400 bg-rose-50 text-rose-500' : 'border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-400 hover:bg-stone-100'}`}>
-                <Heart size={18} fill={userReaction === 'love' ? 'currentColor' : 'none'} />
-              </div>
-            </button>
+            <div className="flex min-w-13 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => react('love')}
+                disabled={!userId}
+                title={userId ? 'Love' : 'Login to react'}
+                className={`transition ${userId ? 'cursor-pointer text-stone-700 hover:text-stone-900' : 'cursor-not-allowed text-stone-400 opacity-50'}`}
+                aria-label="Love"
+              >
+                <Heart size={27} fill={userReaction === 'love' ? 'currentColor' : 'none'} className={userReaction === 'love' ? 'text-rose-600' : ''} />
+              </button>
+              <span className="mt-1 text-sm text-stone-700">{counts.love}</span>
+            </div>
 
-            <div ref={menuRef} className="relative flex items-center">
+            <div ref={menuRef} className="relative flex min-w-13 flex-col items-center">
               <button
                 type="button"
                 onClick={() => setMenuOpen((current) => !current)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-200 bg-stone-50 text-stone-400 transition hover:border-stone-400 hover:bg-stone-100"
+                className="text-stone-700 transition hover:text-stone-900"
                 aria-label="More actions"
               >
-                <MoreHorizontal size={18} />
+                <MoreHorizontal size={27} />
               </button>
 
               {menuOpen && (
-                <div className="absolute bottom-8 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-amber-200 bg-amber-50 shadow-lg">
+                <div className="absolute bottom-9 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-stone-300 bg-stone-50 shadow-lg">
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="block w-full px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-amber-100"
+                    className="block w-full px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-200"
                   >
                     Share
                   </button>
@@ -190,7 +211,7 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
                         setShowReport((current) => !current)
                         setMenuOpen(false)
                       }}
-                      className="block w-full border-t border-amber-200 px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-amber-100"
+                      className="block w-full border-t border-stone-300 px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-200"
                     >
                       Report
                     </button>
