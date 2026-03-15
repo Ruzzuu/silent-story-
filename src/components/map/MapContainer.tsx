@@ -169,7 +169,7 @@ export default function MapContainerComponent({
   )
 
   const displayedStories = useMemo(() => {
-    if (zoomLevel < 3) return []
+    if (zoomLevel < 3) return stories.slice(0, 60)
     if (zoomLevel < 5) return stories.slice(0, 80)
     if (zoomLevel < 7) return stories.slice(0, 140)
     return stories
