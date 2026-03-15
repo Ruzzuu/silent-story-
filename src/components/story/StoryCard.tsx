@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Bookmark, Heart, MoreHorizontal, Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import ReportButton from './ReportButton'
 import ReactionBar from './ReactionBar'
 import { useReactions } from '../../hooks/useReactions'
@@ -15,6 +16,7 @@ interface StoryCardProps {
 }
 
 export default function StoryCard({ story, onClose, userId, anchorPoint }: StoryCardProps) {
+  const navigate = useNavigate()
   const { counts, userReaction, react } = useReactions(story.id, userId)
   const mood = moodConfig[story.mood]
   const [saved, setSaved] = useState(false)
@@ -273,18 +275,21 @@ export default function StoryCard({ story, onClose, userId, anchorPoint }: Story
                   >
                     Share
                   </button>
-                  {userId && userId !== story.user_id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowReport((current) => !current)
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!userId) {
                         setMenuOpen(false)
-                      }}
-                      className="block w-full border-t border-stone-300 px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-200"
-                    >
-                      Report
-                    </button>
-                  )}
+                        navigate('/login')
+                        return
+                      }
+                      setShowReport(true)
+                      setMenuOpen(false)
+                    }}
+                    className="block w-full border-t border-stone-300 px-4 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-200"
+                  >
+                    Report
+                  </button>
                 </div>
               )}
             </div>
@@ -298,7 +303,7 @@ export default function StoryCard({ story, onClose, userId, anchorPoint }: Story
             </p>
           )}
 
-          {showReport && userId && userId !== story.user_id && (
+          {showReport && userId && (
             <ReportButton
               isOpen={showReport}
               onClose={() => setShowReport(false)}

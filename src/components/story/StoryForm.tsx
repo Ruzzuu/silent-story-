@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Send, EyeOff, Eye } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Send, EyeOff, Eye, MapPin } from 'lucide-react'
 import MoodSelector from '../ui/MoodSelector'
 import type { Mood } from '../../types'
 
@@ -27,6 +27,40 @@ export default function StoryForm({ latitude, longitude, onSubmit, onCancel }: S
   const [alias] = useState(randomAlias)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [locationLabel, setLocationLabel] = useState('Detecting location...')
+  const [locationLoading, setLocationLoading] = useState(true)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const loadLocation = async () => {
+      setLocationLoading(true)
+
+      try {
+        const lat = latitude.toFixed(6)
+        const lng = longitude.toFixed(6)
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        })
+
+        if (!response.ok) {
+          throw new Error('Reverse geocoding unavailable')
+        }
+
+        const data = await response.json() as { display_name?: string }
+        setLocationLabel(data.display_name?.trim() || 'Location name not found')
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setLocationLabel('Could not load location name')
+      } finally {
+        setLocationLoading(false)
+      }
+    }
+
+    loadLocation()
+    return () => controller.abort()
+  }, [latitude, longitude])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +113,21 @@ export default function StoryForm({ latitude, longitude, onSubmit, onCancel }: S
           {isAnonymous ? 'ON' : 'OFF'}
         </span>
       </button>
+
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+        <div className="flex items-start gap-2.5">
+          <MapPin size={17} className="mt-0.5 shrink-0 text-amber-700" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-stone-800">Location preview</p>
+            <p className="mt-0.5 text-xs text-stone-700 wrap-break-word">
+              {locationLoading ? 'Detecting location...' : locationLabel}
+            </p>
+            <p className="mt-1 text-[11px] text-stone-500 font-mono">
+              {latitude.toFixed(6)}, {longitude.toFixed(6)}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>

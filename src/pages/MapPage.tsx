@@ -15,6 +15,7 @@ import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle, CircleHelp } fro
 import type { Story, MapBounds, Mood } from '../types'
 
 const PENDING_VERIFICATION_KEY = 'pending_email_verification_v1'
+const MIN_MEMORY_ZOOM = 18
 
 export default function MapPage() {
   const { user, profile } = useAuth()
@@ -41,6 +42,7 @@ export default function MapPage() {
   const [discoverStories, setDiscoverStories] = useState<Story[] | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const [storyAnchorPoint, setStoryAnchorPoint] = useState<{ x: number; y: number } | null>(null)
+  const [zoomHint, setZoomHint] = useState<string | null>(null)
 
   useEffect(() => {
     setShowHowTo(true)
@@ -126,11 +128,19 @@ export default function MapPage() {
       setShowAuthModal(true)
       return
     }
+
+    const currentZoom = mapInstance?.getZoom() ?? 0
+    if (currentZoom < MIN_MEMORY_ZOOM) {
+      setZoomHint(`Zoom in to level ${MIN_MEMORY_ZOOM}+ until streets are visible before leaving a memory.`)
+      window.setTimeout(() => setZoomHint(null), 2200)
+      return
+    }
+
     setHasClickedMap(true)
     setClickedLocation({ lat, lng })
     setShowForm(true)
     setSelectedStory(null)
-  }, [user])
+  }, [user, mapInstance])
 
   const handleAuthSuccess = useCallback(() => {
     setShowAuthModal(false)
@@ -337,6 +347,20 @@ export default function MapPage() {
             </div>
           </motion.div>
         )}
+        {zoomHint && (
+          <motion.div
+            key="zoom-hint"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.25 }}
+            className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+          >
+            <div className="max-w-[90vw] rounded-full bg-amber-700/95 px-5 py-2.5 text-center text-sm text-amber-50 shadow-xl backdrop-blur-sm">
+              {zoomHint}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Story Card Panel */}
@@ -392,11 +416,12 @@ export default function MapPage() {
       >
         <div className="space-y-3 text-sm text-stone-700">
           <p>1. Sign in first to write and react to stories.</p>
-          <p>2. Double click anywhere on the map to leave a memory.</p>
-          <p>3. Click any pin to read stories shared by others.</p>
-          <p>4. Use Discover to explore nearby, trending, and recent stories.</p>
-          <p>5. Use the location button to jump to your current position.</p>
-          <p>6. Keep the space kind, respectful, and safe for everyone.</p>
+          <p>2. Zoom in to level {MIN_MEMORY_ZOOM}+ until streets are visible.</p>
+          <p>3. Double click anywhere on the map to leave a memory.</p>
+          <p>4. Click any pin to read stories shared by others.</p>
+          <p>5. Use Discover to explore nearby, trending, and recent stories.</p>
+          <p>6. Use the location button to jump to your current position.</p>
+          <p>7. Keep the space kind, respectful, and safe for everyone.</p>
         </div>
       </Modal>
 
