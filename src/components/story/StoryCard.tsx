@@ -1,39 +1,40 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { X, MapPin, Calendar, Tag, Bookmark, Heart, MoreHorizontal, Lock } from 'lucide-react'
-import { Sun, Waves, Compass, CloudRain, Sparkles } from 'lucide-react'
-import { moodConfig } from '../../utils/moodConfig'
+import { X, Bookmark, Heart, MoreHorizontal, Lock } from 'lucide-react'
 import ReportButton from './ReportButton'
+import ReactionBar from './ReactionBar'
 import { useReactions } from '../../hooks/useReactions'
-import type { Mood, Story } from '../../types'
+import { moodConfig } from '../../utils/moodConfig'
+import type { Story } from '../../types'
 
 interface StoryCardProps {
   story: Story
   onClose: () => void
   userId?: string
+  anchorPoint?: { x: number; y: number } | null
 }
 
-const moodIcons: Record<Mood, React.ReactNode> = {
-  joy: <Sun size={14} />,
-  love: <Heart size={14} />,
-  nostalgia: <Waves size={14} />,
-  adventure: <Compass size={14} />,
-  loss: <CloudRain size={14} />,
-  wonder: <Sparkles size={14} />,
-}
-
-export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
-  const config = moodConfig[story.mood]
+export default function StoryCard({ story, onClose, userId, anchorPoint }: StoryCardProps) {
   const { counts, userReaction, react } = useReactions(story.id, userId)
-  const visibleTags = story.tags.filter((tag) => !tag.startsWith('trail:'))
+  const mood = moodConfig[story.mood]
   const [saved, setSaved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const [showImageViewer, setShowImageViewer] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [clampedAnchor, setClampedAnchor] = useState<{
+    left: number
+    top: number
+    pointerSide: 'top' | 'bottom' | 'left' | 'right'
+    pointerOffset: number
+  } | null>(null)
+  const storyText = story.content?.trim() || story.title
+  const storyTitle = story.title?.trim() || 'Untitled memory'
+  const authorText = story.is_anonymous ? 'a wanderer' : story.profiles?.username || 'Unknown author'
   const date = new Date(story.created_at).toLocaleDateString('en-US', {
-    year: 'numeric',
     month: 'long',
-    day: 'numeric',
+    year: 'numeric',
   })
 
   useEffect(() => {
@@ -70,133 +71,201 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
     }
   }
 
+  const anchored = !!anchorPoint
+
+  useLayoutEffect(() => {
+    if (!anchorPoint) {
+      setClampedAnchor(null)
+      return
+    }
+
+    const pointerHeight = 14
+    const margin = 12
+
+    const updatePosition = () => {
+      const cardEl = cardRef.current
+      if (!cardEl) return
+
+      const rect = cardEl.getBoundingClientRect()
+      const cardWidth = rect.width
+      const cardHeight = rect.height
+
+      const maxLeft = Math.max(margin, window.innerWidth - margin - cardWidth)
+      const maxTop = Math.max(margin, window.innerHeight - margin - cardHeight)
+
+      const preferredLeft = anchorPoint.x - cardWidth / 2
+      const spaceAbove = anchorPoint.y - margin
+      const spaceBelow = window.innerHeight - anchorPoint.y - margin
+      const placeAbove = spaceAbove >= cardHeight + pointerHeight || spaceAbove >= spaceBelow
+
+      const preferredTop = placeAbove
+        ? anchorPoint.y - cardHeight - pointerHeight
+        : anchorPoint.y + pointerHeight
+
+      const left = Math.min(maxLeft, Math.max(margin, preferredLeft))
+      const top = Math.min(maxTop, Math.max(margin, preferredTop))
+      const anchorRelativeX = anchorPoint.x - left
+      const anchorRelativeY = anchorPoint.y - top
+      const pinnedLeft = preferredLeft < margin
+      const pinnedRight = preferredLeft > maxLeft
+
+      let pointerSide: 'top' | 'bottom' | 'left' | 'right' = placeAbove ? 'bottom' : 'top'
+      if (pinnedLeft && anchorRelativeX <= 24) pointerSide = 'left'
+      if (pinnedRight && anchorRelativeX >= cardWidth - 24) pointerSide = 'right'
+
+      const pointerOffset =
+        pointerSide === 'top' || pointerSide === 'bottom'
+          ? Math.min(cardWidth - 14, Math.max(14, anchorRelativeX))
+          : Math.min(cardHeight - 14, Math.max(14, anchorRelativeY))
+
+      setClampedAnchor({ left, top, pointerSide, pointerOffset })
+    }
+
+    updatePosition()
+
+    let resizeObserver: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined' && cardRef.current) {
+      resizeObserver = new ResizeObserver(updatePosition)
+      resizeObserver.observe(cardRef.current)
+    }
+
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      resizeObserver?.disconnect()
+    }
+  }, [anchorPoint, storyText, story.image_url, menuOpen, showReport])
+
   return (
-    <motion.div
-      className="fixed left-1/2 top-1/2 z-30 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[82vh] overflow-hidden rounded-2xl border border-stone-500 bg-stone-100 shadow-2xl"
-      initial={{ opacity: 0, y: 16, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 16, scale: 0.96 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+    <div
+      className={anchored ? 'absolute z-30 pointer-events-auto transition-[left,top,transform] duration-100 ease-out' : 'fixed left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 pointer-events-auto'}
+      style={anchored
+        ? clampedAnchor
+          ? { left: clampedAnchor.left, top: clampedAnchor.top, transform: 'translateZ(0)' }
+          : { left: anchorPoint.x, top: anchorPoint.y, transform: 'translate(-50%, calc(-100% - 14px))' }
+        : undefined}
     >
-      <div className="sticky top-0 z-10 border-b border-stone-300 bg-stone-100/95 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-5 py-3">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${config.bgColor} ${config.textColor}`}>
-            {moodIcons[story.mood]}
-            {config.label}
-          </span>
-          <button onClick={onClose} className="rounded-full p-2 transition hover:bg-stone-200">
-            <X size={20} className="text-stone-500" />
-          </button>
-        </div>
-      </div>
+      <motion.div
+        ref={cardRef}
+        className="w-[92vw] max-w-md max-h-[82vh] overflow-hidden rounded-2xl border border-stone-500 bg-stone-100 shadow-2xl"
+        initial={{ opacity: 0, scale: anchored ? 1 : 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: anchored ? 1 : 0.96 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+      >
+      <div className="relative max-h-[82vh] overflow-y-auto px-5 py-5">
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-full p-1.5 text-stone-500 transition hover:bg-stone-200 hover:text-stone-700"
+          aria-label="Close story"
+        >
+          <X size={18} />
+        </button>
 
-      <div className="max-h-[calc(82vh-72px)] overflow-y-auto px-5 py-5 space-y-4">
-        <h1 className="text-2xl font-semibold text-stone-800">{story.title}</h1>
+        <h2
+          className="pr-8 text-[1.32rem] leading-[1.2] text-stone-900 tracking-tight"
+          style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+        >
+          {storyTitle}
+        </h2>
 
-        <div className="flex items-center gap-4 text-sm text-stone-500">
-          <span className="flex items-center gap-1">
-            <MapPin size={14} />
-            {story.latitude.toFixed(2)}, {story.longitude.toFixed(2)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar size={14} />
-            {date}
-          </span>
-        </div>
-
-        <p className="text-sm text-stone-400 italic">
-          {story.is_anonymous
-            ? '— a wanderer'
-            : story.profiles?.username
-            ? `by ${story.profiles.username}`
-            : null}
+        <p
+          className="mt-2 pr-8 text-[0.82rem] leading-[1.18] text-stone-800 tracking-tight whitespace-pre-wrap"
+          style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+        >
+          {storyText}
         </p>
 
-        <div className="text-stone-700 leading-relaxed whitespace-pre-wrap">{story.content}</div>
+        <div className="mt-2">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${mood.bgColor} ${mood.textColor}`}>
+            {mood.label}
+          </span>
+        </div>
 
-        {visibleTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {visibleTags.map((tag) => (
-              <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-amber-100 rounded-full text-xs text-amber-800">
-                <Tag size={12} />
-                {tag}
-              </span>
-            ))}
+        {story.image_url && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowImageViewer(true)}
+              className="group flex items-center gap-2"
+              aria-label="Open image"
+            >
+              <img
+                src={story.image_url}
+                alt={story.title}
+                className="h-14 w-14 rounded-lg border border-stone-300 object-cover transition group-hover:opacity-90"
+              />
+              <span className="text-xs text-stone-500">Tap image to expand</span>
+            </button>
           </div>
         )}
 
-        {story.image_url && (
-          <img
-            src={story.image_url}
-            alt={story.title}
-            className="w-full rounded-xl object-cover max-h-64"
-          />
-        )}
+        <div className="mt-4 border-t border-stone-300 pt-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="mb-1">
+              <p className="text-[0.82rem] leading-[1.18] tracking-tight text-stone-700">{authorText}</p>
+              <p className="text-[0.82rem] leading-[1.18] italic text-stone-500">{date}</p>
+            </div>
 
-        <div className="border-t border-stone-300 pt-4">
-          <div className="flex items-end justify-between px-1">
-            <div className="flex min-w-13 flex-col items-center">
+            <div className="flex items-center gap-3">
+            <div className="flex min-w-13 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSaved((current) => !current)}
-                className="text-stone-700 transition hover:text-stone-900"
+                className="flex items-center transition-all duration-200"
                 aria-label={saved ? 'Remove bookmark' : 'Bookmark story'}
               >
-                <Bookmark size={27} fill={saved ? 'currentColor' : 'none'} />
+                <Bookmark
+                  size={22}
+                  fill={saved ? 'currentColor' : 'none'}
+                  strokeWidth={2.1}
+                  className={`transition-transform duration-200 ${saved ? 'scale-105 text-amber-600' : 'text-stone-900 hover:text-stone-700'}`}
+                />
               </button>
-              <span className="mt-1 text-sm text-stone-700">{story.views}</span>
+              <span className="text-xs leading-none tabular-nums text-stone-700">{saved ? 1 : 0}</span>
             </div>
 
-            <div className="flex min-w-13 flex-col items-center">
-              <button
-                type="button"
-                onClick={() => react('like')}
+            <div className="flex min-w-13 items-center gap-1.5">
+              <ReactionBar
+                active={userReaction === 'like'}
                 disabled={!userId}
-                title={userId ? 'React' : 'Login to react'}
-                className={`transition ${userId ? 'cursor-pointer text-stone-700 hover:text-stone-900' : 'cursor-not-allowed text-stone-400 opacity-50'}`}
-                aria-label="React"
-              >
-                <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all
-                    ${userReaction === 'like' ? 'bg-[radial-gradient(circle_at_center,_#b45309_15%,_#0369a1_90%)] shadow-sm' : ''}
-                  `}
-                >
-                  <img
-                    src="/emote.webp"
-                    alt="React"
-                    className={`h-7 w-7 object-contain transition-transform ${userReaction === 'like' ? 'scale-105' : ''}`}
-                  />
-                </span>
-              </button>
-              <span className="mt-1 text-sm text-stone-700">{counts.like}</span>
+                onReact={() => react('like')}
+                size={22}
+              />
+              <span className="text-xs leading-none tabular-nums text-stone-700">{counts.like}</span>
             </div>
 
-            <div className="flex min-w-13 flex-col items-center">
+            <div className="flex min-w-13 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => react('love')}
                 disabled={!userId}
                 title={userId ? 'Love' : 'Login to react'}
-                className={`transition ${userId ? 'cursor-pointer text-stone-700 hover:text-stone-900' : 'cursor-not-allowed text-stone-400 opacity-50'}`}
+                className={`flex items-center transition-all duration-200 ${userId ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
                 aria-label="Love"
               >
-                <Heart size={27} fill={userReaction === 'love' ? 'currentColor' : 'none'} className={userReaction === 'love' ? 'text-rose-600' : ''} />
+                <Heart
+                  size={22}
+                  fill={userReaction === 'love' ? 'currentColor' : 'none'}
+                  strokeWidth={2.2}
+                  className={`transition-transform duration-200 ${userReaction === 'love' ? 'scale-110 text-rose-500' : 'text-stone-900 hover:text-stone-700'}`}
+                />
               </button>
-              <span className="mt-1 text-sm text-stone-700">{counts.love}</span>
+              <span className="text-xs leading-none tabular-nums text-stone-700">{counts.love}</span>
             </div>
 
-            <div ref={menuRef} className="relative flex min-w-13 flex-col items-center">
+            <div ref={menuRef} className="relative flex items-center">
               <button
                 type="button"
                 onClick={() => setMenuOpen((current) => !current)}
-                className="text-stone-700 transition hover:text-stone-900"
+                className="flex items-center justify-center text-stone-500 transition hover:text-stone-700"
                 aria-label="More actions"
               >
-                <MoreHorizontal size={27} />
+                <MoreHorizontal size={22} />
               </button>
 
               {menuOpen && (
-                <div className="absolute bottom-9 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-stone-300 bg-stone-50 shadow-lg">
+                <div className="absolute bottom-8 right-0 z-20 min-w-28 overflow-hidden rounded-md border border-stone-300 bg-stone-50 shadow-lg">
                   <button
                     type="button"
                     onClick={handleShare}
@@ -219,6 +288,7 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
                 </div>
               )}
             </div>
+            </div>
           </div>
 
           {!userId && (
@@ -229,12 +299,67 @@ export default function StoryCard({ story, onClose, userId }: StoryCardProps) {
           )}
 
           {showReport && userId && userId !== story.user_id && (
-            <div className="pt-3">
-              <ReportButton storyId={story.id} reporterId={userId} />
-            </div>
+            <ReportButton
+              isOpen={showReport}
+              onClose={() => setShowReport(false)}
+              storyId={story.id}
+              reporterId={userId}
+            />
           )}
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+
+      {showImageViewer && story.image_url && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65"
+            aria-label="Close image"
+            onClick={() => setShowImageViewer(false)}
+          />
+          <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-stone-900 p-2 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowImageViewer(false)}
+              className="absolute right-3 top-3 rounded-full bg-stone-100/90 p-1 text-stone-700 transition hover:bg-stone-100"
+              aria-label="Close image"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={story.image_url}
+              alt={story.title}
+              className="max-h-[80vh] w-full rounded-xl object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {anchored && (
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute transition-[left,top,bottom,transform] duration-100 ease-out ${clampedAnchor?.pointerSide === 'bottom' || !clampedAnchor ? 'top-full -translate-x-1/2' : clampedAnchor.pointerSide === 'top' ? 'bottom-full -translate-x-1/2' : clampedAnchor.pointerSide === 'left' ? 'right-full -translate-y-1/2' : 'left-full -translate-y-1/2'}`}
+          style={{
+            ...(clampedAnchor?.pointerSide === 'left' || clampedAnchor?.pointerSide === 'right'
+              ? { top: clampedAnchor.pointerOffset }
+              : { left: clampedAnchor ? clampedAnchor.pointerOffset : '50%' }),
+            width: 0,
+            height: 0,
+            ...(clampedAnchor?.pointerSide === 'left'
+              ? { borderTop: '12px solid transparent', borderBottom: '12px solid transparent', borderRight: '12px solid #44403c' }
+              : clampedAnchor?.pointerSide === 'right'
+              ? { borderTop: '12px solid transparent', borderBottom: '12px solid transparent', borderLeft: '12px solid #44403c' }
+              : {
+                  borderLeft: '12px solid transparent',
+                  borderRight: '12px solid transparent',
+                  ...(clampedAnchor?.pointerSide === 'top'
+                    ? { borderBottom: '12px solid #44403c' }
+                    : { borderTop: '12px solid #44403c' }),
+                }),
+          }}
+        />
+      )}
+    </div>
   )
 }

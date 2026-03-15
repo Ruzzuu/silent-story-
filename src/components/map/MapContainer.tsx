@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import L from 'leaflet'
-import { CircleMarker, MapContainer as LeafletMap, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, MapContainer as LeafletMap, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import MapClickHandler from './MapClickHandler'
 import StoryMarker from './StoryMarker'
@@ -15,9 +15,9 @@ function formatCount(n: number): string {
 }
 
 function getClusterTierClass(count: number): string {
-  if (count >= 1000) return 'cluster-tier-red'
-  if (count >= 101) return 'cluster-tier-orange'
-  if (count >= 11) return 'cluster-tier-yellow'
+  if (count >= 16) return 'cluster-tier-red'
+  if (count >= 11) return 'cluster-tier-orange'
+  if (count >= 6) return 'cluster-tier-yellow'
   return 'cluster-tier-green'
 }
 
@@ -45,9 +45,20 @@ interface MapContainerProps {
   onBoundsChange: (bounds: MapBounds) => void
   flyToCoords?: [number, number] | null
   currentUserLocation?: [number, number] | null
-  interactionMode: 'pan' | 'select'
+  searchedLocation?: [number, number] | null
   onMapReady?: (map: L.Map) => void
 }
+
+interface ZoomTrackerProps {
+  onZoomChange: (zoom: number) => void
+}
+
+const searchPinIcon = L.divIcon({
+  className: 'search-result-pin-wrapper',
+  html: '<span style="display:block;font-size:26px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));" aria-hidden="true">📍</span>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 24],
+})
 
 function MapInstanceBridge({ onReady }: { onReady: (map: L.Map) => void }) {
   const map = useMap()
@@ -104,34 +115,23 @@ function FlyToHandler({ coords }: { coords: [number, number] | null }) {
   return null
 }
 
-function InteractionModeHandler({ mode }: { mode: 'pan' | 'select' }) {
-  const map = useMap()
+function ZoomTracker({ onZoomChange }: ZoomTrackerProps) {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom())
+    },
+  })
 
   useEffect(() => {
-    const container = map.getContainer()
-    container.classList.toggle('map-pan-mode', mode === 'pan')
-    container.classList.toggle('map-select-mode', mode === 'select')
-
-    if (mode === 'select') {
-      map.dragging.disable()
-    } else {
-      map.dragging.enable()
-    }
-
-    return () => {
-      container.classList.remove('map-pan-mode', 'map-select-mode')
-      map.dragging.enable()
-    }
-  }, [map, mode])
+    onZoomChange(map.getZoom())
+  }, [map, onZoomChange])
 
   return null
 }
 
-function MapClickSplashHandler({ mode }: { mode: 'pan' | 'select' }) {
+function MapClickSplashHandler() {
   const map = useMapEvents({
     click(e) {
-      if (mode !== 'select') return
-
       const splash = L.marker(e.latlng, {
         interactive: false,
         icon: L.divIcon({
@@ -158,13 +158,22 @@ export default function MapContainerComponent({
   onBoundsChange,
   flyToCoords,
   currentUserLocation,
-  interactionMode,
+  searchedLocation,
   onMapReady,
 }: MapContainerProps) {
+  const [zoomLevel, setZoomLevel] = useState(3)
+
   const handleBoundsChange = useCallback(
     (bounds: MapBounds) => onBoundsChange(bounds),
     [onBoundsChange]
   )
+
+  const displayedStories = useMemo(() => {
+    if (zoomLevel < 3) return []
+    if (zoomLevel < 5) return stories.slice(0, 80)
+    if (zoomLevel < 7) return stories.slice(0, 140)
+    return stories
+  }, [stories, zoomLevel])
 
   return (
     <LeafletMap
@@ -172,6 +181,7 @@ export default function MapContainerComponent({
       zoom={3}
       className="h-full w-full z-0"
       zoomControl={false}
+      doubleClickZoom={false}
       minZoom={2}
       maxZoom={18}
       worldCopyJump={true}
@@ -180,14 +190,17 @@ export default function MapContainerComponent({
     >
       {onMapReady ? <MapInstanceBridge onReady={onMapReady} /> : null}
       <TileLayer
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapClickHandler onClick={onMapClick} enabled={interactionMode === 'select'} />
-      <MapClickSplashHandler mode={interactionMode} />
-      <InteractionModeHandler mode={interactionMode} />
+      <MapClickHandler onClick={onMapClick} />
+      <MapClickSplashHandler />
       <BoundsTracker onBoundsChange={handleBoundsChange} />
+      <ZoomTracker onZoomChange={setZoomLevel} />
       <FlyToHandler coords={flyToCoords ?? null} />
+      {searchedLocation ? (
+        <Marker position={searchedLocation} icon={searchPinIcon} />
+      ) : null}
       {currentUserLocation ? (
         <CircleMarker
           center={currentUserLocation}
@@ -202,12 +215,16 @@ export default function MapContainerComponent({
       ) : null}
       <MarkerClusterGroup
         chunkedLoading
+        chunkInterval={120}
+        chunkDelay={40}
+        removeOutsideVisibleBounds
+        animate={false}
         iconCreateFunction={createClusterIcon}
-        maxClusterRadius={60}
-        spiderfyOnMaxZoom
+        maxClusterRadius={48}
+        spiderfyOnMaxZoom={false}
         showCoverageOnHover={false}
       >
-        {stories.map((story) => (
+        {displayedStories.map((story) => (
           <StoryMarker key={story.id} story={story} onClick={onStoryClick} />
         ))}
       </MarkerClusterGroup>

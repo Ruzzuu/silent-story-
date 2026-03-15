@@ -7,7 +7,7 @@ interface MapClickHandlerProps {
 
 export default function MapClickHandler({ onClick, enabled = true }: MapClickHandlerProps) {
   useMapEvents({
-    click(e) {
+    dblclick(e) {
       if (!enabled) return
       onClick(e.latlng.lat, e.latlng.lng)
     },

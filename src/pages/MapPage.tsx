@@ -11,7 +11,7 @@ import AuthModal from '../components/auth/AuthModal'
 import Modal from '../components/ui/Modal'
 import { useStories } from '../hooks/useStories'
 import { useAuth } from '../hooks/useAuth'
-import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle, Hand } from 'lucide-react'
+import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle } from 'lucide-react'
 import type { Story, MapBounds, Mood } from '../types'
 
 const PENDING_VERIFICATION_KEY = 'pending_email_verification_v1'
@@ -26,6 +26,7 @@ export default function MapPage() {
   const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null)
   const [flyToCoords, setFlyToCoords] = useState<[number, number] | null>(null)
   const [currentUserLocation, setCurrentUserLocation] = useState<[number, number] | null>(null)
+  const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 20, lng: 0 })
   const [showToolbar, setShowToolbar] = useState(false)
   const [hasClickedMap, setHasClickedMap] = useState(false)
@@ -35,8 +36,42 @@ export default function MapPage() {
   const [welcomeName, setWelcomeName] = useState('')
   const [pendingWelcome, setPendingWelcome] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [discoverRadiusKm, setDiscoverRadiusKm] = useState(10)
+  const [discoverStories, setDiscoverStories] = useState<Story[] | null>(null)
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
-  const [mapInteractionMode, setMapInteractionMode] = useState<'pan' | 'select'>('pan')
+  const [storyAnchorPoint, setStoryAnchorPoint] = useState<{ x: number; y: number } | null>(null)
+
+  const buildRadiusBounds = useCallback((center: { lat: number; lng: number }, radiusKm: number): MapBounds => {
+    const latDelta = radiusKm / 111
+    const cosLat = Math.cos((center.lat * Math.PI) / 180)
+    const lngDelta = radiusKm / (111 * Math.max(0.15, Math.abs(cosLat)))
+
+    return {
+      north: Math.min(85, center.lat + latDelta),
+      south: Math.max(-75, center.lat - latDelta),
+      east: Math.min(180, center.lng + lngDelta),
+      west: Math.max(-180, center.lng - lngDelta),
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!mapInstance || !selectedStory) {
+      setStoryAnchorPoint(null)
+      return
+    }
+
+    const updateAnchorPoint = () => {
+      const point = mapInstance.latLngToContainerPoint([selectedStory.latitude, selectedStory.longitude])
+      setStoryAnchorPoint({ x: point.x, y: point.y })
+    }
+
+    updateAnchorPoint()
+    mapInstance.on('move zoom resize', updateAnchorPoint)
+
+    return () => {
+      mapInstance.off('move zoom resize', updateAnchorPoint)
+    }
+  }, [mapInstance, selectedStory])
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     setCurrentBounds(bounds)
@@ -51,6 +86,25 @@ export default function MapPage() {
       fetchStoriesInBounds(currentBounds)
     }
   }, [currentBounds, fetchStoriesInBounds])
+
+  useEffect(() => {
+    if (!showFeed) {
+      setDiscoverStories(null)
+      return
+    }
+
+    let active = true
+    const expandedBounds = buildRadiusBounds(mapCenter, discoverRadiusKm)
+    fetchStoriesInBounds(expandedBounds, { replace: false }).then((result) => {
+      if (active) {
+        setDiscoverStories(result)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [showFeed, mapCenter, discoverRadiusKm, buildRadiusBounds, fetchStoriesInBounds])
 
   useEffect(() => {
     if (user || typeof window === 'undefined') return
@@ -134,6 +188,7 @@ export default function MapPage() {
 
   const handlePlaceSelect = useCallback((lat: number, lng: number) => {
     setFlyToCoords([lat, lng])
+    setSearchedLocation([lat, lng])
     setMapCenter({ lat, lng })
   }, [])
 
@@ -146,21 +201,12 @@ export default function MapPage() {
         onBoundsChange={handleBoundsChange}
         flyToCoords={flyToCoords}
         currentUserLocation={currentUserLocation}
-        interactionMode={mapInteractionMode}
+        searchedLocation={searchedLocation}
         onMapReady={setMapInstance}
       />
 
       {/* Custom map controls */}
       <div className="story-map-controls">
-        <button
-          type="button"
-          onClick={() => setMapInteractionMode((mode) => mode === 'pan' ? 'select' : 'pan')}
-          className="story-control-btn"
-          title="Pan mode aktif. Klik untuk pindah ke select mode."
-          aria-label="Switch to coordinate select mode"
-        >
-          {mapInteractionMode === 'pan' ? <MousePointerClick size={19} className="mx-auto" /> : <Hand size={20} className="mx-auto" />}
-        </button>
         <button
           type="button"
           onClick={handleFindMe}
@@ -231,22 +277,13 @@ export default function MapPage() {
             >
               <Locate size={18} />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMapInteractionMode((mode) => mode === 'pan' ? 'select' : 'pan')
-                setShowToolbar(false)
-              }}
-              className="story-control-btn"
-              title="Pan mode aktif. Klik untuk pindah ke select mode."
-              aria-label="Switch to coordinate select mode"
-            >
-              {mapInteractionMode === 'pan' ? <MousePointerClick size={19} className="mx-auto" /> : <Hand size={20} className="mx-auto" />}
-            </button>
           </div>
         )}
 
-        <PlaceSearch onSelect={handlePlaceSelect} />
+        <PlaceSearch
+          onSelect={handlePlaceSelect}
+          onClearSearchLocation={() => setSearchedLocation(null)}
+        />
       </div>
 
       {/* User menu */}
@@ -282,7 +319,7 @@ export default function MapPage() {
           >
             <div className="flex items-center gap-2 px-5 py-3 bg-gray-900/80 text-white text-sm rounded-full shadow-xl backdrop-blur-sm">
               <MousePointerClick size={16} className="text-violet-300 shrink-0" />
-              Click anywhere on the map to leave a memory
+              Double click anywhere on the map to leave a memory
             </div>
           </motion.div>
         )}
@@ -295,6 +332,7 @@ export default function MapPage() {
             story={selectedStory}
             onClose={() => setSelectedStory(null)}
             userId={user?.id}
+            anchorPoint={storyAnchorPoint}
           />
         )}
       </AnimatePresence>
@@ -303,10 +341,16 @@ export default function MapPage() {
       <AnimatePresence>
         {showFeed && (
           <StoryFeed
-            stories={stories}
+            stories={discoverStories ?? stories}
             mapCenter={mapCenter}
             onStoryClick={handleStoryClick}
-            onClose={() => setShowFeed(false)}
+            onNearbyRadiusChange={setDiscoverRadiusKm}
+            onClose={() => {
+              setShowFeed(false)
+              if (currentBounds) {
+                fetchStoriesInBounds(currentBounds)
+              }
+            }}
           />
         )}
       </AnimatePresence>

@@ -81,15 +81,12 @@ h1, h2, h3 {
 }
 
 /* Map cursors */
-.leaflet-container.map-pan-mode {
-  cursor: url('/google_os_move.cur'), move;
-}
-.leaflet-container.map-pan-mode.leaflet-drag-target {
-  cursor: url('/busy.cur'), grabbing;
+.leaflet-container {
+  cursor: url('/aerowedge.cur'), crosshair;
 }
 
-.leaflet-container.map-select-mode {
-  cursor: url('/aerowedge.cur'), crosshair;
+.leaflet-container.leaflet-drag-target {
+  cursor: url('/busy.cur'), grabbing;
 }
 
 .map-click-splash-wrapper {
@@ -112,6 +109,34 @@ h1, h2, h3 {
   inset: 0;
   border-radius: 9999px;
   pointer-events: none;
+}
+
+.search-result-pin-wrapper {
+  background: none !important;
+  border: none !important;
+}
+
+.search-result-pin {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 38% 30%, #fb7185 0%, #e11d48 55%, #be123c 100%);
+  border: 1px solid rgba(136, 19, 55, 0.42);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.35);
+}
+
+.search-result-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  width: 10px;
+  height: 18px;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  background: linear-gradient(180deg, #c4b5fd 0%, #a78bfa 100%);
 }
 
 .map-click-splash::before {

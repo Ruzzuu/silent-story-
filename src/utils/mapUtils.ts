@@ -4,12 +4,13 @@ import { moodConfig } from './moodConfig'
 
 export function createMoodIcon(mood: Mood): L.DivIcon {
   const config = moodConfig[mood]
+  const dotColor = config.markerColor || config.color
   return L.divIcon({
     className: 'custom-mood-marker',
     html: `<div style="
       width: 14px;
       height: 14px;
-      background: ${config.color};
+      background: ${dotColor};
       border: 2px solid rgba(0,0,0,0.15);
       border-radius: 50%;
       box-shadow: 0 1px 4px rgba(0,0,0,0.25);

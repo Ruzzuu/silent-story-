@@ -1,18 +1,30 @@
-import { useState } from 'react'
-import { Flag } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 
 interface ReportButtonProps {
+  isOpen: boolean
+  onClose: () => void
   storyId: string
   reporterId: string
 }
 
-const reasons = ['spam', 'hate speech', 'harassment', 'inappropriate content', 'misinformation']
+const REPORT_REASONS = [
+  'I just don\'t like it',
+  'Bullying or unwanted contact',
+  'Suicide, self-injury or eating disorders',
+  'Violence, hate or exploitation',
+  'Selling or promoting restricted items',
+  'Nudity or sexual activity',
+  'Scam, fraud or spam',
+  'False information',
+]
 
-export default function ReportButton({ storyId, reporterId }: ReportButtonProps) {
-  const [showReasons, setShowReasons] = useState(false)
+export default function ReportButton({ isOpen, onClose, storyId, reporterId }: ReportButtonProps) {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const reasons = useMemo(() => REPORT_REASONS, [])
 
   const handleReport = async (reason: string) => {
     setLoading(true)
@@ -22,46 +34,61 @@ export default function ReportButton({ storyId, reporterId }: ReportButtonProps)
 
     if (!error) {
       setSubmitted(true)
+      window.setTimeout(() => {
+        setSubmitted(false)
+        onClose()
+      }, 900)
     }
     setLoading(false)
-    setShowReasons(false)
   }
 
-  if (submitted) {
-    return <p className="text-sm text-gray-500">Report submitted. Thank you.</p>
-  }
+  if (!isOpen) return null
 
   return (
-    <div>
-      {!showReasons ? (
-        <button
-          onClick={() => setShowReasons(true)}
-          className="flex items-center gap-1 text-sm text-gray-400 hover:text-red-500 transition"
-        >
-          <Flag size={14} />
-          Report this story
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">Select a reason:</p>
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        aria-label="Close report dialog"
+        className="absolute inset-0 bg-black/35"
+        onClick={onClose}
+      />
+
+      <div className="absolute inset-x-0 bottom-0 md:inset-x-4 md:bottom-auto md:top-1/2 md:mx-auto md:max-w-2xl md:-translate-y-1/2 rounded-t-3xl md:rounded-3xl border border-stone-300 bg-stone-100 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-stone-300 px-4 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-stone-700 transition hover:bg-stone-200"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+          <h3 className="text-[1.65rem] leading-none text-stone-800" style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}>
+            Report
+          </h3>
+          <span className="w-7" aria-hidden="true" />
+        </div>
+
+        <div className="border-b border-stone-300 px-6 py-5">
+          <p className="text-xl font-semibold text-stone-800">Why are you reporting this post?</p>
+          {submitted && <p className="mt-2 text-sm text-emerald-700">Report submitted. Thank you.</p>}
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto">
           {reasons.map((reason) => (
             <button
               key={reason}
+              type="button"
               onClick={() => handleReport(reason)}
               disabled={loading}
-              className="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 hover:text-red-700 transition disabled:opacity-50"
+              className="flex w-full items-center justify-between border-b border-stone-300 px-6 py-5 text-left text-[1.08rem] text-stone-800 transition hover:bg-stone-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {reason}
+              <span>{reason}</span>
+              <ChevronRight size={20} className="text-stone-400" />
             </button>
           ))}
-          <button
-            onClick={() => setShowReasons(false)}
-            className="text-sm text-gray-400 hover:text-gray-600"
-          >
-            Cancel
-          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

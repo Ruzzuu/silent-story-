@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { TrendingUp, Clock, MapPin } from 'lucide-react'
 import { moodConfig } from '../../utils/moodConfig'
@@ -9,15 +10,30 @@ interface StoryFeedProps {
   mapCenter: { lat: number; lng: number }
   onStoryClick: (story: Story) => void
   onClose: () => void
+  onNearbyRadiusChange?: (radiusKm: number) => void
 }
 
-export default function StoryFeed({ stories, mapCenter, onStoryClick, onClose }: StoryFeedProps) {
+export default function StoryFeed({ stories, mapCenter, onStoryClick, onClose, onNearbyRadiusChange }: StoryFeedProps) {
+  const [nearbyRadiusInput, setNearbyRadiusInput] = useState('10')
+  const nearbyRadiusKm = useMemo(() => {
+    const parsed = Number.parseFloat(nearbyRadiusInput)
+    if (!Number.isFinite(parsed)) return 10
+    return Math.min(40075, Math.max(1, parsed))
+  }, [nearbyRadiusInput])
+
+  useEffect(() => {
+    onNearbyRadiusChange?.(nearbyRadiusKm)
+  }, [nearbyRadiusKm, onNearbyRadiusChange])
   const trending = [...stories].sort((a, b) => b.views + b.ai_quality_score - (a.views + a.ai_quality_score)).slice(0, 10)
   const recent = [...stories].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
-  const nearby = [...stories]
-    .map((s) => ({ ...s, _dist: haversineDistance(mapCenter.lat, mapCenter.lng, s.latitude, s.longitude) }))
-    .sort((a, b) => a._dist - b._dist)
-    .slice(0, 10)
+  const nearby = useMemo(
+    () => [...stories]
+      .map((s) => ({ ...s, _dist: haversineDistance(mapCenter.lat, mapCenter.lng, s.latitude, s.longitude) }))
+      .filter((s) => s._dist <= nearbyRadiusKm)
+      .sort((a, b) => a._dist - b._dist)
+      .slice(0, 20),
+    [stories, mapCenter, nearbyRadiusKm],
+  )
 
   return (
     <motion.div
@@ -34,14 +50,32 @@ export default function StoryFeed({ stories, mapCenter, onStoryClick, onClose }:
 
       <div className="p-6 space-y-6">
         <section>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            <MapPin size={16} /> Nearby
-          </h3>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <MapPin size={16} /> Nearby
+            </h3>
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+              <span>Radius</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={1}
+                max={40075}
+                step={1}
+                value={nearbyRadiusInput}
+                onChange={(event) => setNearbyRadiusInput(event.target.value)}
+                className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-stone-700"
+                aria-label="Nearby radius filter"
+              />
+              <span>km</span>
+            </label>
+          </div>
+          <p className="mb-2 text-[11px] text-gray-400">Auto apply, no need to press Enter.</p>
           <div className="space-y-2">
             {nearby.map((story) => (
               <StoryFeedItem key={story.id} story={story} onClick={() => onStoryClick(story)} distance={story._dist} />
             ))}
-            {nearby.length === 0 && <p className="text-sm text-gray-400">No stories nearby</p>}
+            {nearby.length === 0 && <p className="text-sm text-gray-400">No stories found in {nearbyRadiusKm} km radius</p>}
           </div>
         </section>
 

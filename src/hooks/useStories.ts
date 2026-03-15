@@ -6,6 +6,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 const RANDOM_SEEN_STORAGE_KEY = 'random_seen_story_ids'
 const RANDOM_POOL_SIZE = 300
 const SEEN_STORY_WEIGHT = 0.15
+const VIEWPORT_STORY_LIMIT = 120
 
 function readSeenStoryIds(): Set<string> {
   try {
@@ -56,6 +57,7 @@ export function useStories() {
   const boundsRef = useRef<MapBounds | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const seenRandomStoryIdsRef = useRef<Set<string>>(new Set())
+  const fetchSeqRef = useRef(0)
 
   useEffect(() => {
     seenRandomStoryIdsRef.current = readSeenStoryIds()
@@ -92,7 +94,9 @@ export function useStories() {
     }
   }, [])
 
-  const fetchStoriesInBounds = useCallback(async (bounds: MapBounds) => {
+  const fetchStoriesInBounds = useCallback(async (bounds: MapBounds, options?: { replace?: boolean }) => {
+    const shouldReplace = options?.replace ?? true
+    const requestSeq = ++fetchSeqRef.current
     boundsRef.current = bounds
     setLoading(true)
     const { data, error } = await supabase
@@ -104,14 +108,27 @@ export function useStories() {
       .lte('longitude', bounds.east)
       .eq('moderation_status', 'safe')
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(VIEWPORT_STORY_LIMIT)
+
+    if (requestSeq !== fetchSeqRef.current) {
+      return [] as Story[]
+    }
 
     if (error) {
       console.error('Error fetching stories:', error)
+      setLoading(false)
+      return [] as Story[]
     } else {
-      setStories(data as Story[])
+      const nextStories = data as Story[]
+      if (shouldReplace) {
+        setStories(nextStories)
+      }
+      setLoading(false)
+      return nextStories
     }
+
     setLoading(false)
+    return [] as Story[]
   }, [])
 
   const createStory = useCallback(async (story: Omit<Story, 'id' | 'views' | 'ai_quality_score' | 'created_at' | 'moderation_status' | 'tags' | 'profiles'>) => {

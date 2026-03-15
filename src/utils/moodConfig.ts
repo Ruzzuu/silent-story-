@@ -35,7 +35,7 @@ export const moodConfig: Record<Mood, MoodConfig> = {
     color: '#3b82f6',
     bgColor: 'bg-blue-100',
     textColor: 'text-blue-800',
-    markerColor: '#3b82f6',
+    markerColor: '#d97706',
     gradient: 'from-blue-400 to-indigo-300',
   },
   adventure: {
