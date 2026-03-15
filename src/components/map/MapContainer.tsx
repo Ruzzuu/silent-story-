@@ -175,6 +175,8 @@ export default function MapContainerComponent({
     return stories
   }, [stories, zoomLevel])
 
+  const shouldUseChunkedLoading = displayedStories.length > 300
+
   return (
     <LeafletMap
       center={[20, 0]}
@@ -214,7 +216,7 @@ export default function MapContainerComponent({
         />
       ) : null}
       <MarkerClusterGroup
-        chunkedLoading
+        chunkedLoading={shouldUseChunkedLoading}
         chunkInterval={120}
         chunkDelay={40}
         removeOutsideVisibleBounds
