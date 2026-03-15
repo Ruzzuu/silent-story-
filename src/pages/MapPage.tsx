@@ -11,7 +11,7 @@ import AuthModal from '../components/auth/AuthModal'
 import Modal from '../components/ui/Modal'
 import { useStories } from '../hooks/useStories'
 import { useAuth } from '../hooks/useAuth'
-import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle } from 'lucide-react'
+import { BookOpen, Locate, Menu, X, MousePointerClick, Shuffle, CircleHelp } from 'lucide-react'
 import type { Story, MapBounds, Mood } from '../types'
 
 const PENDING_VERIFICATION_KEY = 'pending_email_verification_v1'
@@ -29,6 +29,7 @@ export default function MapPage() {
   const [searchedLocation, setSearchedLocation] = useState<[number, number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 20, lng: 0 })
   const [showToolbar, setShowToolbar] = useState(false)
+  const [showHowTo, setShowHowTo] = useState(false)
   const [hasClickedMap, setHasClickedMap] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authModalHint, setAuthModalHint] = useState('')
@@ -209,6 +210,15 @@ export default function MapPage() {
       <div className="story-map-controls">
         <button
           type="button"
+          onClick={() => setShowHowTo(true)}
+          className="story-control-btn"
+          title="How to use"
+          aria-label="How to use"
+        >
+          <CircleHelp size={20} className="mx-auto" />
+        </button>
+        <button
+          type="button"
           onClick={handleFindMe}
           className="story-control-btn"
           title="Find my location"
@@ -369,6 +379,20 @@ export default function MapPage() {
             onCancel={() => { setShowForm(false); setClickedLocation(null) }}
           />
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showHowTo}
+        onClose={() => setShowHowTo(false)}
+        title="How to Use"
+      >
+        <div className="space-y-3 text-sm text-stone-700">
+          <p>1. Double click anywhere on the map to leave a memory.</p>
+          <p>2. Click any pin to read stories shared by others.</p>
+          <p>3. Use Discover to explore nearby, trending, and recent stories.</p>
+          <p>4. Use the location button to jump to your current position.</p>
+          <p>5. Keep the space kind, respectful, and safe for everyone.</p>
+        </div>
       </Modal>
 
       {/* Welcome banner — shown briefly after login */}
