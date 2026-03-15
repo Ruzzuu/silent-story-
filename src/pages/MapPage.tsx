@@ -42,6 +42,10 @@ export default function MapPage() {
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const [storyAnchorPoint, setStoryAnchorPoint] = useState<{ x: number; y: number } | null>(null)
 
+  useEffect(() => {
+    setShowHowTo(true)
+  }, [])
+
   const buildRadiusBounds = useCallback((center: { lat: number; lng: number }, radiusKm: number): MapBounds => {
     const latDelta = radiusKm / 111
     const cosLat = Math.cos((center.lat * Math.PI) / 180)
@@ -219,15 +223,6 @@ export default function MapPage() {
         </button>
         <button
           type="button"
-          onClick={handleFindMe}
-          className="story-control-btn"
-          title="Find my location"
-          aria-label="Find my location"
-        >
-          <Locate size={20} className="mx-auto" />
-        </button>
-        <button
-          type="button"
           onClick={() => mapInstance?.zoomIn()}
           className="story-control-btn story-control-btn-zoom"
           title="Zoom in"
@@ -260,7 +255,7 @@ export default function MapPage() {
           <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg shadow-lg px-1.5 py-1.5">
             <button
               onClick={() => setShowToolbar(false)}
-              className="p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
+              className="flex h-9 w-9 items-center justify-center text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
               title="Close"
             >
               <X size={18} />
@@ -268,24 +263,33 @@ export default function MapPage() {
             <div className="w-px h-5 bg-gray-600 mx-0.5" />
             <button
               onClick={() => { setShowFeed(!showFeed); setSelectedStory(null); setShowToolbar(false) }}
-              className="p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
+              className="group flex h-9 w-9 items-center rounded-md px-2 text-gray-300 transition-all duration-200 hover:w-32 hover:bg-gray-700 hover:text-white"
               title="Discover stories"
             >
-              <BookOpen size={18} />
+              <BookOpen size={18} className="shrink-0" />
+              <span className="ml-2 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-24 group-hover:opacity-100">
+                Discover
+              </span>
             </button>
             <button
               onClick={() => { handleShuffle(); setShowToolbar(false) }}
-              className="p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
+              className="group flex h-9 w-9 items-center rounded-md px-2 text-gray-300 transition-all duration-200 hover:w-32 hover:bg-gray-700 hover:text-white"
               title="Random story"
             >
-              <Shuffle size={18} />
+              <Shuffle size={18} className="shrink-0" />
+              <span className="ml-2 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-24 group-hover:opacity-100">
+                Random
+              </span>
             </button>
             <button
               onClick={() => { handleFindMe(); setShowToolbar(false) }}
-              className="p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700 transition"
+              className="group flex h-9 w-9 items-center rounded-md px-2 text-gray-300 transition-all duration-200 hover:w-32 hover:bg-gray-700 hover:text-white"
               title="Find my location"
             >
-              <Locate size={18} />
+              <Locate size={18} className="shrink-0" />
+              <span className="ml-2 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-24 group-hover:opacity-100">
+                Locate
+              </span>
             </button>
           </div>
         )}
@@ -387,11 +391,12 @@ export default function MapPage() {
         title="How to Use"
       >
         <div className="space-y-3 text-sm text-stone-700">
-          <p>1. Double click anywhere on the map to leave a memory.</p>
-          <p>2. Click any pin to read stories shared by others.</p>
-          <p>3. Use Discover to explore nearby, trending, and recent stories.</p>
-          <p>4. Use the location button to jump to your current position.</p>
-          <p>5. Keep the space kind, respectful, and safe for everyone.</p>
+          <p>1. Sign in first to write and react to stories.</p>
+          <p>2. Double click anywhere on the map to leave a memory.</p>
+          <p>3. Click any pin to read stories shared by others.</p>
+          <p>4. Use Discover to explore nearby, trending, and recent stories.</p>
+          <p>5. Use the location button to jump to your current position.</p>
+          <p>6. Keep the space kind, respectful, and safe for everyone.</p>
         </div>
       </Modal>
 
